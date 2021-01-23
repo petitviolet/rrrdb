@@ -174,3 +174,24 @@ pub(crate) enum Whitespace {
     Newline,
     Tab,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenize_select_1() {
+        let sql = "SELECT 1";
+        let mut tokenizer = Tokenizer::new(sql);
+        let result: Result<Vec<Token>, TokenizeError> = tokenizer.tokenize();
+        assert!(result.is_ok());
+        let tokens = result.unwrap();
+
+        let expected = vec![
+            Token::Keyword(Keyword::Select),
+            Token::Whitespace(Whitespace::Space),
+            Token::Number(String::from("1")),
+        ];
+        assert_eq!(expected, tokens);
+    }
+}
