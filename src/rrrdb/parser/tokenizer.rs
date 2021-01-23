@@ -181,17 +181,22 @@ mod tests {
 
     #[test]
     fn tokenize_select_1() {
-        let sql = "SELECT 1";
+      tokenizer_assertion(
+        "SELECT 1",
+        vec![
+            Token::Keyword(Keyword::Select),
+            Token::Whitespace(Whitespace::Space),
+            Token::Number(String::from("1")),
+        ]
+      );
+    }
+
+    fn tokenizer_assertion(sql: &str, expected: Vec<Token>) {
         let mut tokenizer = Tokenizer::new(sql);
         let result: Result<Vec<Token>, TokenizeError> = tokenizer.tokenize();
         assert!(result.is_ok());
         let tokens = result.unwrap();
 
-        let expected = vec![
-            Token::Keyword(Keyword::Select),
-            Token::Whitespace(Whitespace::Space),
-            Token::Number(String::from("1")),
-        ];
         assert_eq!(expected, tokens);
     }
 }
