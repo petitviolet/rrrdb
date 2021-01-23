@@ -191,6 +191,46 @@ mod tests {
       );
     }
 
+    #[test]
+    fn tokenize_select_from() {
+      tokenizer_assertion(
+        "SELECT * FROM users",
+        vec![
+            Token::Keyword(Keyword::Select),
+            Token::Whitespace(Whitespace::Space),
+            Token::Mul,
+            Token::Whitespace(Whitespace::Space),
+            Token::Keyword(Keyword::From),
+            Token::Whitespace(Whitespace::Space),
+            Token::Word("users".to_string()),
+        ]
+      );
+    }
+
+    #[test]
+    fn tokenize_select_from_where() {
+      tokenizer_assertion(
+        "SELECT * FROM users WHERE id = 1",
+        vec![
+            Token::Keyword(Keyword::Select),
+            Token::Whitespace(Whitespace::Space),
+            Token::Mul,
+            Token::Whitespace(Whitespace::Space),
+            Token::Keyword(Keyword::From),
+            Token::Whitespace(Whitespace::Space),
+            Token::Word("users".to_string()),
+            Token::Whitespace(Whitespace::Space),
+            Token::Keyword(Keyword::Where),
+            Token::Whitespace(Whitespace::Space),
+            Token::Word("id".to_string()),
+            Token::Whitespace(Whitespace::Space),
+            Token::Eq,
+            Token::Whitespace(Whitespace::Space),
+            Token::Number("1".to_string()),
+        ]
+      );
+    }
+
     fn tokenizer_assertion(sql: &str, expected: Vec<Token>) {
         let mut tokenizer = Tokenizer::new(sql);
         let result: Result<Vec<Token>, TokenizeError> = tokenizer.tokenize();
