@@ -138,6 +138,35 @@ pub(crate) enum Token {
     SemiColon, // ;
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      match self {
+        Token::EOF => { write!(f, "EOF") },
+        Token::Keyword(keyword) => { write!(f, "{}", keyword) },
+        Token::Word(word) => { write!(f, "{}", word) },
+        Token::Number(number) => { write!(f, "{}", number) },
+        Token::SingleQuotedString(s) => { write!(f, "{}", s) },
+        Token::Comma => { write!(f, ",") },
+        Token::Whitespace(whitespace) => { write!(f, "{}", whitespace) },
+        Token::Eq => { write!(f, "=") },
+        Token::Neq => { write!(f, "!=") },
+        Token::Lt => { write!(f, "<") }
+        Token::Lte => { write!(f, "<=") },
+        Token::Gt => { write!(f, ">") },
+        Token::Gte => { write!(f, ">=") },
+        Token::Plus => { write!(f, "+") },
+        Token::Minus => { write!(f, "-") },
+        Token::Mul => { write!(f, "*") },
+        Token::Div => { write!(f, "/") },
+        Token::Mod => { write!(f, "%") },
+        Token::LParen => { write!(f, "(") },
+        Token::RParen => { write!(f, ")") },
+        Token::Period => { write!(f, ".") },
+        Token::SemiColon => { write!(f, ";") },
+      }
+    }
+}
+
 macro_rules! define_keywords {
   ($($keyword:ident), *) => {
       #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -150,6 +179,14 @@ macro_rules! define_keywords {
             $(s if s.to_lowercase() == stringify!($keyword).to_lowercase() => { Some(Keyword::$keyword) },)
             *
             _ => None,
+          }
+        }
+      }
+      impl std::fmt::Display for Keyword {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+          match self {
+            $(Keyword::$keyword => { write!(f, "{}", stringify!($keyword)) }),
+            *
           }
         }
       }
@@ -173,6 +210,15 @@ pub(crate) enum Whitespace {
     Space,
     Newline,
     Tab,
+}
+impl std::fmt::Display for Whitespace {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Whitespace::Space => write!(f, " "),
+      Whitespace::Newline => write!(f, "\n"),
+      Whitespace::Tab => write!(f, "\t"),
+    }
+  }
 }
 
 #[cfg(test)]
