@@ -7,6 +7,15 @@ pub(crate) struct Query {
   from: Table,
   predicates: Vec<Predicate>,
 }
+impl Query {
+  pub fn new(projections: Vec<Projection>, from: Table, predicates: Vec<Predicate>) -> Self {
+    Self {
+      projections,
+      from,
+      predicates,
+    }
+  }
+}
 pub(crate) enum Projection {
   Expression(Expression),
   Wildcard,
