@@ -1,61 +1,74 @@
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Statement {
-  Select(Query),
-  Insert(Insert),
+    Select(Query),
+    Insert(Insert),
 }
-pub(crate) struct Query { 
-  projections: Vec<Projection>, 
-  from: Table,
-  predicates: Vec<Predicate>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Query {
+    projections: Vec<Projection>,
+    from: Option<Table>,
+    predicates: Vec<Predicate>,
 }
 impl Query {
-  pub fn new(projections: Vec<Projection>, from: Table, predicates: Vec<Predicate>) -> Self {
-    Self {
-      projections,
-      from,
-      predicates,
+    pub fn new(
+        projections: Vec<Projection>,
+        from: Option<Table>,
+        predicates: Vec<Predicate>,
+    ) -> Self {
+        Self {
+            projections,
+            from,
+            predicates,
+        }
     }
-  }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Projection {
-  Expression(Expression),
-  Wildcard,
+    Expression(Expression),
+    Wildcard,
 }
 type Table = String;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Predicate {
-  Expression(Expression),
+    Expression(Expression),
 }
-pub(crate) struct Insert { 
-  // TODO
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Insert {
+    // TODO
 }
-pub(crate) enum Expression { 
-  Ident(String),
-  Wildcard, 
-  Value(Value),
-  Operator(Operator),
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum Expression {
+    Ident(String),
+    Wildcard,
+    Value(Value),
+    Operator(Operator),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Value {
-  Number(String),
-  QuotedString(String),
-  Boolean(bool),
-  Null,
+    Number(String),
+    QuotedString(String),
+    Boolean(bool),
+    Null,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Operator {
-  BinOperator {
-    lhs: Box<Expression>,
-    rhs: Box<Expression>,
-    op: BinaryOperator,
-  }
+    BinOperator {
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+        op: BinaryOperator,
+    },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum BinaryOperator {
-  Eq,
-  Neq,
-  Lt,
-  Lte,
-  Gt,
-  Gte,
-  And,
-  Or,
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    And,
+    Or,
 }

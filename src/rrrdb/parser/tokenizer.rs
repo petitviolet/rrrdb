@@ -140,30 +140,30 @@ pub(crate) enum Token {
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      match self {
-        Token::EOF => { write!(f, "EOF") },
-        Token::Keyword(keyword) => { write!(f, "{}", keyword) },
-        Token::Word(word) => { write!(f, "{}", word) },
-        Token::Number(number) => { write!(f, "{}", number) },
-        Token::SingleQuotedString(s) => { write!(f, "{}", s) },
-        Token::Comma => { write!(f, ",") },
-        Token::Whitespace(whitespace) => { write!(f, "{}", whitespace) },
-        Token::Eq => { write!(f, "=") },
-        Token::Neq => { write!(f, "!=") },
-        Token::Lt => { write!(f, "<") }
-        Token::Lte => { write!(f, "<=") },
-        Token::Gt => { write!(f, ">") },
-        Token::Gte => { write!(f, ">=") },
-        Token::Plus => { write!(f, "+") },
-        Token::Minus => { write!(f, "-") },
-        Token::Mul => { write!(f, "*") },
-        Token::Div => { write!(f, "/") },
-        Token::Mod => { write!(f, "%") },
-        Token::LParen => { write!(f, "(") },
-        Token::RParen => { write!(f, ")") },
-        Token::Period => { write!(f, ".") },
-        Token::SemiColon => { write!(f, ";") },
-      }
+        match self {
+            Token::EOF => write!(f, "EOF"),
+            Token::Keyword(keyword) => write!(f, "{}", keyword),
+            Token::Word(word) => write!(f, "{}", word),
+            Token::Number(number) => write!(f, "{}", number),
+            Token::SingleQuotedString(s) => write!(f, "{}", s),
+            Token::Comma => write!(f, ","),
+            Token::Whitespace(whitespace) => write!(f, "{}", whitespace),
+            Token::Eq => write!(f, "="),
+            Token::Neq => write!(f, "!="),
+            Token::Lt => write!(f, "<"),
+            Token::Lte => write!(f, "<="),
+            Token::Gt => write!(f, ">"),
+            Token::Gte => write!(f, ">="),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Mul => write!(f, "*"),
+            Token::Div => write!(f, "/"),
+            Token::Mod => write!(f, "%"),
+            Token::LParen => write!(f, "("),
+            Token::RParen => write!(f, ")"),
+            Token::Period => write!(f, "."),
+            Token::SemiColon => write!(f, ";"),
+        }
     }
 }
 
@@ -196,14 +196,7 @@ macro_rules! define_keywords {
   };
 }
 
-define_keywords!(
-    Select,
-    From,
-    Where,
-    Insert,
-    Into,
-    Values
-);
+define_keywords!(Select, From, Where, Insert, Into, Values);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Whitespace {
@@ -212,13 +205,13 @@ pub(crate) enum Whitespace {
     Tab,
 }
 impl std::fmt::Display for Whitespace {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Whitespace::Space => write!(f, " "),
-      Whitespace::Newline => write!(f, "\n"),
-      Whitespace::Tab => write!(f, "\t"),
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Whitespace::Space => write!(f, " "),
+            Whitespace::Newline => write!(f, "\n"),
+            Whitespace::Tab => write!(f, "\t"),
+        }
     }
-  }
 }
 
 #[cfg(test)]
@@ -227,54 +220,54 @@ mod tests {
 
     #[test]
     fn tokenize_select_1() {
-      tokenizer_assertion(
-        "SELECT 1",
-        vec![
-            Token::Keyword(Keyword::Select),
-            Token::Whitespace(Whitespace::Space),
-            Token::Number(String::from("1")),
-        ]
-      );
+        tokenizer_assertion(
+            "SELECT 1",
+            vec![
+                Token::Keyword(Keyword::Select),
+                Token::Whitespace(Whitespace::Space),
+                Token::Number(String::from("1")),
+            ],
+        );
     }
 
     #[test]
     fn tokenize_select_from() {
-      tokenizer_assertion(
-        "SELECT * FROM users",
-        vec![
-            Token::Keyword(Keyword::Select),
-            Token::Whitespace(Whitespace::Space),
-            Token::Mul,
-            Token::Whitespace(Whitespace::Space),
-            Token::Keyword(Keyword::From),
-            Token::Whitespace(Whitespace::Space),
-            Token::Word("users".to_string()),
-        ]
-      );
+        tokenizer_assertion(
+            "SELECT * FROM users",
+            vec![
+                Token::Keyword(Keyword::Select),
+                Token::Whitespace(Whitespace::Space),
+                Token::Mul,
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::From),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+            ],
+        );
     }
 
     #[test]
     fn tokenize_select_from_where() {
-      tokenizer_assertion(
-        "SELECT * FROM users WHERE id = 1",
-        vec![
-            Token::Keyword(Keyword::Select),
-            Token::Whitespace(Whitespace::Space),
-            Token::Mul,
-            Token::Whitespace(Whitespace::Space),
-            Token::Keyword(Keyword::From),
-            Token::Whitespace(Whitespace::Space),
-            Token::Word("users".to_string()),
-            Token::Whitespace(Whitespace::Space),
-            Token::Keyword(Keyword::Where),
-            Token::Whitespace(Whitespace::Space),
-            Token::Word("id".to_string()),
-            Token::Whitespace(Whitespace::Space),
-            Token::Eq,
-            Token::Whitespace(Whitespace::Space),
-            Token::Number("1".to_string()),
-        ]
-      );
+        tokenizer_assertion(
+            "SELECT * FROM users WHERE id = 1",
+            vec![
+                Token::Keyword(Keyword::Select),
+                Token::Whitespace(Whitespace::Space),
+                Token::Mul,
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::From),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Where),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("id".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Eq,
+                Token::Whitespace(Whitespace::Space),
+                Token::Number("1".to_string()),
+            ],
+        );
     }
 
     fn tokenizer_assertion(sql: &str, expected: Vec<Token>) {
