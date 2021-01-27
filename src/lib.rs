@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+pub mod rrrdb;
+
 #[cfg(test)]
 mod tests {
     #[test]
