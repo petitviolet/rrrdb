@@ -1,4 +1,4 @@
-use ast::{Predicate, Query, Statement};
+use ast::{BinaryOperator, Operator, Predicate, Query, Statement};
 use tokenizer::TokenizeError;
 
 use self::{
@@ -42,7 +42,7 @@ impl Parser {
             (Token::Keyword(tokenizer::Keyword::Select), _) => self.parse_select_statement(),
             (Token::Keyword(tokenizer::Keyword::Insert), _) => self.parse_insert_statement(),
             (unexpected_token, pos) => Err(ParserError::ParseError(format!(
-                "Unexpected token: {} at {}",
+                "Unexpected token: '{}' at {}",
                 unexpected_token, pos
             ))),
         }
@@ -52,6 +52,7 @@ impl Parser {
         let projections: Vec<Projection> = {
             let mut v = vec![];
             self.consume_tokens(|token, pos| match token {
+                Token::EOF => Ok(false),
                 Token::Keyword(tokenizer::Keyword::From) => Ok(false),
                 Token::Comma | Token::Whitespace(_) => Ok(true),
                 Token::Mul => {
@@ -75,7 +76,7 @@ impl Parser {
                     Ok(true)
                 }
                 unexpected_token => Err(ParserError::ParseError(format!(
-                    "Unexpected token while parsing Projections: {} at {}",
+                    "Unexpected token while parsing Projections: '{}' at {}",
                     unexpected_token, pos
                 ))),
             })?;
@@ -87,46 +88,76 @@ impl Parser {
                 Token::EOF => Ok(None),
                 Token::Word(name) => Ok(Some(name.to_string())),
                 unexpected_token => Err(ParserError::ParseError(format!(
-                    "Unexpected token while parsing From: {} at {}",
+                    "Unexpected token while parsing From: '{}' at {}",
                     unexpected_token, pos
                 ))),
             }
         }?;
-        let predicates = {
+        let operators = {
             let mut v = vec![];
-            self.consume_tokens(|token, pos| match token {
-                Token::EOF => Ok(false),
-                Token::Comma | Token::Whitespace(_) => Ok(true),
-                Token::SingleQuotedString(s) => {
-                    v.push(Predicate::Expression(Expression::Value(
-                        Value::QuotedString(s.to_string()),
-                    )));
-                    Ok(true)
+            if let (&Token::Keyword(tokenizer::Keyword::Where), pos) = self.next_token() {
+                loop {
+                    if self.skip_stop_words()? {
+                        break;
+                    } else {
+                        v.push(self.parse_operator()?);
+                    }
                 }
-                Token::Number(num) => {
-                    v.push(Predicate::Expression(Expression::Value(Value::Number(
-                        num.to_string(),
-                    ))));
-                    Ok(true)
-                }
-                Token::Word(ident) => {
-                    v.push(Predicate::Expression(Expression::Ident(ident.to_string())));
-                    Ok(true)
-                }
-                unexpected_token => Err(ParserError::ParseError(format!(
-                    "Unexpected token while parsing Predicates: {} at {}",
-                    unexpected_token, pos
-                ))),
-            })?;
+            }
             v
         };
 
-        let query = Query::new(projections, from, predicates);
+        let query = Query::new(projections, from, Predicate::new(operators));
         Ok(Statement::Select(query))
     }
 
     fn parse_insert_statement(&mut self) -> Result<Statement, ParserError> {
         todo!("parse insert")
+    }
+
+    // return true if the next token is EOF, otherwise false
+    fn skip_stop_words(&mut self) -> Result<bool, ParserError> {
+        loop {
+            if self.pos >= self.tokens.len() {
+                // consider EOF
+                return Ok(true);
+            }
+            match self.tokens.get(self.pos + 1) {
+                Some(Token::Whitespace(_)) => {
+                    self.pos += 1;
+                    continue;
+                }
+                Some(Token::EOF) => return Ok(true),
+                _ => return Ok(false),
+            }
+        }
+    }
+
+    fn parse_operator(&mut self) -> Result<Operator, ParserError> {
+        let left = self.parse_expression()?;
+        let (token, pos) = self.next_token();
+        let binop = match token {
+            Token::Eq => Ok(BinaryOperator::Eq),
+            unexpected_token => Err(ParserError::ParseError(format!(
+                "Unexpected token while parse_operator: '{}' at {}",
+                unexpected_token, pos
+            ))),
+        }?;
+        let right = self.parse_expression()?;
+        Ok(binop.build(left, right))
+    }
+
+    fn parse_expression(&mut self) -> Result<Expression, ParserError> {
+        let (token, pos) = self.next_token();
+        match token {
+            Token::SingleQuotedString(s) => Ok(Expression::quoted_string(&s)),
+            Token::Number(num) => Ok(Expression::number(&num)),
+            Token::Word(ident) => Ok(Expression::ident(&ident)),
+            unexpected_token => Err(ParserError::ParseError(format!(
+                "Unexpected token while parse_expression: '{}' at {}",
+                unexpected_token, pos
+            ))),
+        }
     }
 
     fn next_token(&mut self) -> (&Token, usize) {
@@ -179,7 +210,7 @@ mod tests {
                     "1".to_string(),
                 )))],
                 None,
-                vec![],
+                Predicate::new(vec![]),
             )),
         );
     }
@@ -200,7 +231,7 @@ mod tests {
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
-                vec![],
+                Predicate::new(vec![]),
             )),
         );
     }
@@ -209,6 +240,7 @@ mod tests {
     fn parse_select_from_where() {
         parser_assertion(
             vec![
+                // SELECT * FROM users WHERE id = 1
                 Token::Keyword(Keyword::Select),
                 Token::Whitespace(Whitespace::Space),
                 Token::Mul,
@@ -228,13 +260,11 @@ mod tests {
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
-                vec![Predicate::Expression(Expression::Operator(
-                    Operator::BinOperator {
-                        lhs: Box::new(Expression::Ident("id".to_string())),
-                        rhs: Box::new(Expression::Value(Value::Number("1".to_string()))),
-                        op: BinaryOperator::Eq,
-                    },
-                ))],
+                Predicate::new(vec![Operator::BinOperator {
+                    lhs: Expression::Ident("id".to_string()),
+                    rhs: Expression::Value(Value::Number("1".to_string())),
+                    op: BinaryOperator::Eq,
+                }]),
             )),
         );
     }
