@@ -208,8 +208,8 @@ impl std::fmt::Display for Whitespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Whitespace::Space => write!(f, " "),
-            Whitespace::Newline => write!(f, "\n"),
-            Whitespace::Tab => write!(f, "\t"),
+            Whitespace::Newline => write!(f, "\\n"),
+            Whitespace::Tab => write!(f, "\\t"),
         }
     }
 }
