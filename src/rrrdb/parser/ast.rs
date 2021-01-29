@@ -26,52 +26,32 @@ pub(crate) enum Projection {
 type Table = String;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Predicate {
-    operators: Vec<Operator>,
+    expression: Option<Expression>,
 }
 impl Predicate {
-    pub fn new(operators: Vec<Operator>) -> Self {
-        Self { operators }
+    pub fn empty() -> Self {
+        Self { expression: None }
+    }
+    pub fn new(expression: Expression) -> Self {
+        Self {
+            expression: Some(expression),
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Insert {
     // TODO
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum Operator {
-    BinOperator {
-        lhs: Expression,
-        rhs: Expression,
-        op: BinaryOperator,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum BinaryOperator {
-    Eq,
-    Neq,
-    Lt,
-    Lte,
-    Gt,
-    Gte,
-    And,
-    Or,
-}
-
-impl BinaryOperator {
-    pub fn build(self, left: Expression, right: Expression) -> Operator {
-        Operator::BinOperator {
-            lhs: left,
-            rhs: right,
-            op: self,
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Expression {
     Ident(String),
     Value(Value),
+    BinOperator {
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+        op: BinaryOperator,
+    },
 }
 
 impl Expression {
@@ -98,4 +78,25 @@ pub(crate) enum Value {
     QuotedString(String),
     Boolean(bool),
     Null,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum BinaryOperator {
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    And,
+    Or,
+}
+
+impl BinaryOperator {
+    pub fn build(self, left: Expression, right: Expression) -> Expression {
+        Expression::BinOperator {
+            lhs: Box::new(left),
+            rhs: Box::new(right),
+            op: self,
+        }
+    }
 }

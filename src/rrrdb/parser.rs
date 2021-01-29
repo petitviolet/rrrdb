@@ -1,4 +1,4 @@
-use ast::{BinaryOperator, Operator, Predicate, Query, Statement};
+use ast::{BinaryOperator, Predicate, Query, Statement};
 use tokenizer::TokenizeError;
 
 use self::{
@@ -93,21 +93,9 @@ impl Parser {
                 ))),
             }
         }?;
-        let operators = {
-            let mut v = vec![];
-            if let (&Token::Keyword(tokenizer::Keyword::Where), pos) = self.next_token() {
-                loop {
-                    if self.skip_stop_words()? {
-                        break;
-                    } else {
-                        v.push(self.parse_operator()?);
-                    }
-                }
-            }
-            v
-        };
+        let predicate: Predicate = self.parse_predicate()?;
 
-        let query = Query::new(projections, from, Predicate::new(operators));
+        let query = Query::new(projections, from, predicate);
         Ok(Statement::Select(query))
     }
 
@@ -133,30 +121,107 @@ impl Parser {
         }
     }
 
-    fn parse_operator(&mut self) -> Result<Operator, ParserError> {
-        let left = self.parse_expression()?;
-        let (token, pos) = self.next_token();
-        let binop = match token {
-            Token::Eq => Ok(BinaryOperator::Eq),
-            unexpected_token => Err(ParserError::ParseError(format!(
-                "Unexpected token while parse_operator: '{}' at {}",
-                unexpected_token, pos
-            ))),
-        }?;
-        let right = self.parse_expression()?;
-        Ok(binop.build(left, right))
+    fn parse_predicate(&mut self) -> Result<Predicate, ParserError> {
+        if let (&Token::Keyword(tokenizer::Keyword::Where), pos) = self.next_token() {
+            loop {
+                if self.skip_stop_words()? {
+                    break;
+                } else {
+                    let expr = self.parse_expression(None)?;
+                    return Ok(Predicate::new(expr));
+                }
+            }
+        }
+        Ok(Predicate::empty())
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParserError> {
+    fn parse_expression(
+        &mut self,
+        processing: Option<Expression>,
+    ) -> Result<Expression, ParserError> {
         let (token, pos) = self.next_token();
         match token {
-            Token::SingleQuotedString(s) => Ok(Expression::quoted_string(&s)),
-            Token::Number(num) => Ok(Expression::number(&num)),
-            Token::Word(ident) => Ok(Expression::ident(&ident)),
+            Token::SingleQuotedString(s) => {
+                let expr = Expression::quoted_string(&s);
+                self.continue_parse_expr(expr, processing)
+            }
+            Token::Number(num) => {
+                let expr = Expression::number(&num);
+                self.continue_parse_expr(expr, processing)
+            }
+            Token::Word(ident) => {
+                let expr = match ident.as_str() {
+                    "true" => Expression::boolean(true),
+                    "false" => Expression::boolean(false),
+                    s => Expression::ident(s),
+                };
+                self.continue_parse_expr(expr, processing)
+            }
+            Token::Eq => self.build_binoperator(BinaryOperator::Eq, processing),
+            Token::Neq => self.build_binoperator(BinaryOperator::Neq, processing),
+            Token::Lt => self.build_binoperator(BinaryOperator::Lt, processing),
+            Token::Lte => self.build_binoperator(BinaryOperator::Lte, processing),
+            Token::Gt => self.build_binoperator(BinaryOperator::Gt, processing),
+            Token::Gte => self.build_binoperator(BinaryOperator::Gte, processing),
+            // Token::Plus => { Ok(BinaryOperator::Plus)},
+            // Token::Minus => { Ok(BinaryOperator::Minus)},
+            // Token::Mul => { Ok(BinaryOperator::Mul)},
+            // Token::Div => { Ok(BinaryOperator::Div)},
+            // Token::Mod => { Ok(BinaryOperator::Mod)},
+            // Token::LParen => { Ok(BinaryOperator::LParen)},
+            // Token::RParen => { Ok(BinaryOperator::RParen)},
+            // Token::Period => { Ok(BinaryOperator::Period)},
+            // Token::SemiColon => { Ok(BinaryOperator::SemiColon)},
+            Token::EOF => processing.ok_or(ParserError::ParseError(format!(
+                "Unexpected EOF while parse_expression",
+            ))),
             unexpected_token => Err(ParserError::ParseError(format!(
                 "Unexpected token while parse_expression: '{}' at {}",
                 unexpected_token, pos
             ))),
+        }
+    }
+
+    fn continue_parse_expr(
+        &mut self,
+        expr: Expression,
+        processing: Option<Expression>,
+    ) -> Result<Expression, ParserError> {
+        match processing {
+            Some(left) => Err(ParserError::ParseError(format!(""))),
+            None => self.parse_expression(Some(expr)),
+        }
+    }
+
+    fn build_binoperator(
+        &mut self,
+        op: BinaryOperator,
+        processing: Option<Expression>,
+    ) -> Result<Expression, ParserError> {
+        match processing {
+            Some(left) => {
+                let right = self.parse_expression(None)?;
+                Ok(op.build(left, right))
+            }
+            None => Err(ParserError::ParseError(format!(
+                "LeftExpression for '{:?}' doesn't exist while parse_operator: at {}",
+                op, self.pos
+            ))),
+        }
+    }
+
+    fn prev_token(&mut self) -> (&Token, usize) {
+        if self.pos <= 0 {
+            self.pos = 0;
+            return (self.tokens.get(0).unwrap_or(&Token::EOF), self.pos);
+        }
+        loop {
+            self.pos -= 1;
+            match self.tokens.get(self.pos) {
+                Some(Token::Whitespace(_)) => continue,
+                Some(token) => return (token, self.pos),
+                None => return (&Token::EOF, self.pos),
+            }
         }
     }
 
@@ -210,7 +275,7 @@ mod tests {
                     "1".to_string(),
                 )))],
                 None,
-                Predicate::new(vec![]),
+                Predicate::empty(),
             )),
         );
     }
@@ -231,7 +296,7 @@ mod tests {
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
-                Predicate::new(vec![]),
+                Predicate::empty(),
             )),
         );
     }
@@ -260,11 +325,11 @@ mod tests {
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
-                Predicate::new(vec![Operator::BinOperator {
-                    lhs: Expression::Ident("id".to_string()),
-                    rhs: Expression::Value(Value::Number("1".to_string())),
+                Predicate::new(Expression::BinOperator {
+                    lhs: Box::new(Expression::Ident("id".to_string())),
+                    rhs: Box::new(Expression::Value(Value::Number("1".to_string()))),
                     op: BinaryOperator::Eq,
-                }]),
+                }),
             )),
         );
     }
