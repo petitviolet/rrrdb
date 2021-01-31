@@ -1,10 +1,5 @@
-use ast::{BinaryOperator, Predicate, Query, Statement};
-use tokenizer::TokenizeError;
-
-use self::{
-    ast::{Expression, Projection, Value},
-    tokenizer::{Token, Tokenizer},
-};
+use ast::*;
+use tokenizer::*;
 
 mod ast;
 mod tokenizer;
@@ -31,13 +26,13 @@ impl Parser {
         Self { tokens, pos: 0 }
     }
 
-    pub fn parse_sql(query: &str) -> Result<Statement, ParserError> {
+    pub fn parse_sql(query: &str) -> Result<AST, ParserError> {
         let tokens = Tokenizer::new(query).tokenize()?;
         let mut parser = Self::new(tokens);
         parser.parse()
     }
 
-    pub fn parse(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse(&mut self) -> Result<AST, ParserError> {
         match self.next_token() {
             (Token::Keyword(tokenizer::Keyword::Select), _) => self.parse_select_statement(),
             (Token::Keyword(tokenizer::Keyword::Insert), _) => self.parse_insert_statement(),
@@ -48,7 +43,7 @@ impl Parser {
         }
     }
 
-    fn parse_select_statement(&mut self) -> Result<Statement, ParserError> {
+    fn parse_select_statement(&mut self) -> Result<AST, ParserError> {
         let projections: Vec<Projection> = {
             let mut v = vec![];
             self.consume_tokens(|token, pos| match token {
@@ -96,10 +91,10 @@ impl Parser {
         let predicate: Predicate = self.parse_predicate()?;
 
         let query = Query::new(projections, from, predicate);
-        Ok(Statement::Select(query))
+        Ok(AST::Select(query))
     }
 
-    fn parse_insert_statement(&mut self) -> Result<Statement, ParserError> {
+    fn parse_insert_statement(&mut self) -> Result<AST, ParserError> {
         todo!("parse insert")
     }
 
@@ -122,7 +117,7 @@ impl Parser {
     }
 
     fn parse_predicate(&mut self) -> Result<Predicate, ParserError> {
-        if let (&Token::Keyword(tokenizer::Keyword::Where), pos) = self.next_token() {
+        if let (&Token::Keyword(tokenizer::Keyword::Where), _pos) = self.next_token() {
             loop {
                 if self.skip_stop_words()? {
                     break;
@@ -188,7 +183,10 @@ impl Parser {
         processing: Option<Expression>,
     ) -> Result<Expression, ParserError> {
         match processing {
-            Some(left) => Err(ParserError::ParseError(format!(""))),
+            Some(left) => Err(ParserError::ParseError(format!(
+                "Unexpected token while continue_parse_expr: {:?}",
+                left
+            ))),
             None => self.parse_expression(Some(expr)),
         }
     }
@@ -270,7 +268,7 @@ mod tests {
                 Token::Whitespace(Whitespace::Space),
                 Token::Number(String::from("1")),
             ],
-            Statement::Select(Query::new(
+            AST::Select(Query::new(
                 vec![Projection::Expression(Expression::Value(Value::Number(
                     "1".to_string(),
                 )))],
@@ -293,7 +291,7 @@ mod tests {
                 Token::Whitespace(Whitespace::Space),
                 Token::Word("users".to_string()),
             ],
-            Statement::Select(Query::new(
+            AST::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
                 Predicate::empty(),
@@ -322,7 +320,7 @@ mod tests {
                 Token::Whitespace(Whitespace::Space),
                 Token::Number("1".to_string()),
             ],
-            Statement::Select(Query::new(
+            AST::Select(Query::new(
                 vec![Projection::Wildcard],
                 Some("users".to_string()),
                 Predicate::new(Expression::BinOperator {
@@ -334,7 +332,7 @@ mod tests {
         );
     }
 
-    fn parser_assertion(tokens: Vec<Token>, expected: Statement) {
+    fn parser_assertion(tokens: Vec<Token>, expected: AST) {
         let mut parser = Parser::new(tokens);
         let result = parser.parse();
         assert!(result.is_ok(), "result: {:?}", result);

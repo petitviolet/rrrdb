@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum Statement {
+pub(crate) enum AST {
     Select(Query),
     Insert(Insert),
 }
