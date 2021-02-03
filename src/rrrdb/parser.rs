@@ -1,3 +1,5 @@
+use std::{convert::TryInto, ops::Deref};
+
 pub(crate) use ast::*;
 use tokenizer::*;
 
@@ -77,11 +79,15 @@ impl Parser {
             })?;
             v
         };
-        let from = {
+        let froms = {
             let (token, pos) = self.next_token();
+            let mut v: Vec<String> = vec![];
             match token {
-                Token::EOF => Ok(None),
-                Token::Word(name) => Ok(Some(name.to_string())),
+                Token::EOF => Ok(v),
+                Token::Word(name) => {
+                    v.push(name.to_owned());
+                    Ok(v)
+                }
                 unexpected_token => Err(ParserError::ParseError(format!(
                     "Unexpected token while parsing From: '{}' at {}",
                     unexpected_token, pos
@@ -90,7 +96,7 @@ impl Parser {
         }?;
         let predicate: Predicate = self.parse_predicate()?;
 
-        let query = Query::new(projections, from, predicate);
+        let query = Query::new(projections, froms, predicate);
         Ok(Statement::Select(query))
     }
 
@@ -269,7 +275,7 @@ mod tests {
                 vec![Projection::Expression(Expression::Value(Value::Number(
                     "1".to_string(),
                 )))],
-                None,
+                vec![],
                 Predicate::empty(),
             )),
         );
@@ -290,7 +296,7 @@ mod tests {
             ],
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
-                Some("users".to_string()),
+                vec!["users".to_string()],
                 Predicate::empty(),
             )),
         );
@@ -319,7 +325,7 @@ mod tests {
             ],
             Statement::Select(Query::new(
                 vec![Projection::Wildcard],
-                Some("users".to_string()),
+                vec!["users".to_string()],
                 Predicate::new(Expression::BinOperator {
                     lhs: Box::new(Expression::Ident("id".to_string())),
                     rhs: Box::new(Expression::Value(Value::Number("1".to_string()))),

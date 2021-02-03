@@ -5,15 +5,15 @@ pub(crate) enum Statement {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Query {
-    projections: Vec<Projection>,
-    from: Option<Table>,
-    predicate: Predicate,
+    pub projections: Vec<Projection>,
+    pub froms: Vec<Table>,
+    pub predicate: Predicate,
 }
 impl Query {
-    pub fn new(projections: Vec<Projection>, from: Option<Table>, predicate: Predicate) -> Self {
+    pub fn new(projections: Vec<Projection>, froms: Vec<Table>, predicate: Predicate) -> Self {
         Self {
             projections,
-            from,
+            froms,
             predicate,
         }
     }
