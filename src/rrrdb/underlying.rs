@@ -1,4 +1,3 @@
-use crate::rrrdb::DBResult;
 use rocksdb::DB;
 
 pub struct Underlying {
