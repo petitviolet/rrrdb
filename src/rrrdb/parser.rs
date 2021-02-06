@@ -11,6 +11,14 @@ pub(crate) enum ParserError {
     TokenizeError(String),
     ParseError(String),
 }
+impl ToString for ParserError {
+    fn to_string(&self) -> String {
+        match self {
+            ParserError::TokenizeError(msg) => format!("TokenizeError: {}", msg),
+            ParserError::ParseError(msg) => format!("ParseError: {}", msg)
+        }
+    }
+}
 impl From<TokenizeError> for ParserError {
     fn from(e: TokenizeError) -> Self {
         ParserError::TokenizeError(e.message)
