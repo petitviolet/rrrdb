@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-mod store;
+pub(crate) mod store;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Database {
     pub name: String,
