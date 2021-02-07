@@ -1,27 +1,24 @@
-use std::todo;
+use std::error::Error;
 
-use crate::rrrdb::{schema::*, underlying::Underlying};
+use crate::rrrdb::{
+    schema::*,
+    underlying::{DBError, Underlying},
+};
 
 pub(crate) struct SchemaStore<'a> {
     db: &'a Underlying,
 }
 
 impl<'a> SchemaStore<'a> {
-    const METADATA_PREFIX: &'static str = "rrrdb_metadata_";
+    const METADATA_SUFFIX: &'static str = "_rrrdb_metadata";
 
     pub fn new(db: &'a Underlying) -> SchemaStore<'a> {
         Self { db }
     }
 
-    pub fn find_schema(&self, database_name: &str) -> Option<Database> {
-        let result = self
-            .db
-            .get(format!("{}{}", Self::METADATA_PREFIX, database_name).as_ref());
-        match result {
-            Ok(Some(bytes)) => {}
-            Ok(None) => {}
-            Err(err) => {}
-        }
-        todo!()
+    pub fn find_schema(&self, database_name: &str) -> Result<Option<Database>, DBError> {
+        self.db.get_serialized::<Database>(
+            format!("{}{}", database_name, Self::METADATA_SUFFIX).as_ref(),
+        )
     }
 }
