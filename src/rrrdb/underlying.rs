@@ -1,12 +1,13 @@
 use rocksdb::DB;
+use serde::{de::DeserializeOwned, Serialize};
 
 pub struct Underlying {
-    db: rocksdb::DB,
+    pub(crate) db: rocksdb::DB,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DBError {
-    message: String,
+    pub(crate) message: String,
 }
 
 impl From<rocksdb::Error> for DBError {
@@ -14,6 +15,11 @@ impl From<rocksdb::Error> for DBError {
         Self {
             message: e.into_string(),
         }
+    }
+}
+impl From<String> for DBError {
+    fn from(e: String) -> Self {
+        Self { message: e }
     }
 }
 
@@ -28,7 +34,34 @@ impl Underlying {
         self.db.get(key).map_err(|e| DBError::from(e))
     }
 
+    pub fn get_serialized<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>, DBError> {
+        self.get(key).and_then(|opt| match opt {
+            Some(found) => match String::from_utf8(found) {
+                Ok(s) => match serde_json::from_str::<T>(&s) {
+                    Ok(t) => Ok(Some(t)),
+                    Err(err) => Err(DBError::from(format!("Failed to deserialize: {:?}", err))),
+                },
+                Err(err) => Err(DBError::from(format!("Failed to deserialize: {:?}", err))),
+            },
+            None => Ok(None),
+        })
+    }
+
     pub fn put(&self, key: &str, value: Vec<u8>) -> Result<(), DBError> {
         self.db.put(key, value).map_err(|e| DBError::from(e))
+    }
+
+    pub fn put_serialized<T: Serialize + std::fmt::Debug>(
+        &self,
+        key: &str,
+        value: T,
+    ) -> Result<(), DBError> {
+        match serde_json::to_string(&value) {
+            Ok(serialized) => self.put(&key, serialized.into_bytes()),
+            Err(err) => Err(DBError::from(format!(
+                "Failed to serialize to String. T: {:?}, err: {:?}",
+                value, err
+            ))),
+        }
     }
 }
