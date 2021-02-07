@@ -21,4 +21,9 @@ impl<'a> SchemaStore<'a> {
             format!("{}{}", database_name, Self::METADATA_SUFFIX).as_ref(),
         )
     }
+
+    pub fn save_schema(&self, database: Database) -> Result<(), DBError> {
+        let key = format!("{}{}", &database.name, Self::METADATA_SUFFIX);
+        self.db.put_serialized(&key, database)
+    }
 }
