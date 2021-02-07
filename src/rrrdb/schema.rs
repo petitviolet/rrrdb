@@ -1,7 +1,8 @@
-use std::ops::Deref;
+use serde::{Deserialize, Serialize};
 
 pub(crate) mod store;
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Database {
     pub name: String,
     pub tables: Vec<Table>,
@@ -19,7 +20,7 @@ impl Database {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Table {
     pub name: String,
     pub columns: Vec<Column>,
@@ -37,13 +38,13 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Column {
     pub name: String,
     pub column_type: ColumnType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum ColumnType {
     Varchar,
     Integer,
