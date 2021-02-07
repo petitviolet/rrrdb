@@ -18,22 +18,22 @@ pub(crate) enum Plan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct SelectPlan {
-    plans: Vec<SelectTablePlan>,
-    projections: Vec<ProjectionPlan>,
+    pub(crate) plans: Vec<SelectTablePlan>,
+    pub(crate) projections: Vec<ProjectionPlan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ProjectionPlan {
-    table: Table,
-    column: Column,
+    pub(crate) table: Table,
+    pub(crate) column: Column,
     // expression: Expression,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct SelectTablePlan {
-    table: Table,
-    select_columns: Vec<Column>,
-    filter: Option<Filter>,
+    pub(crate) table: Table,
+    pub(crate) select_columns: Vec<Column>,
+    pub(crate) filter: Option<Filter>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,9 +44,11 @@ pub(crate) struct Filter {
 impl<'a> Planner<'a> {
     pub fn new(database_name: &str, underlying: &'a Underlying, sql: &'a Statement) -> Self {
         let schema_store = SchemaStore::new(underlying);
-        let database = schema_store
-            .find_schema(database_name)
-            .expect(&format!("database {} exist", database_name));
+        let database = match schema_store.find_schema(database_name) {
+            Ok(Some(database)) => { database },
+            Ok(None) => { todo!("database {} doesn't exist", database_name) },
+            Err(err) => { panic!("Unexpected error failed {:?}", err) }
+        };
 
         Self {
             database,
