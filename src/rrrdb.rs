@@ -1,30 +1,33 @@
 use parser::Parser;
 
-use crate::rrrdb::underlying::Underlying;
+use crate::rrrdb::storage::Storage;
 
 use self::{parser::ParserError, sql::planner::Planner};
 
 mod parser;
 mod schema;
 mod sql;
-mod underlying;
+mod storage;
 
 pub struct RrrDB {
-    pub(crate) underlying: Underlying,
+    pub(crate) underlying: Storage,
 }
 
 impl RrrDB {
     pub fn new(path: &str) -> Self {
         Self {
-            underlying: Underlying::new(path),
+            underlying: Storage::new(path),
         }
     }
 
     pub fn execute(&mut self, database_name: &str, query: &str) -> DBResult {
-      let statement = Parser::parse_sql(query).map_err(|pe: ParserError| { pe.to_string() })?;
-      let mut planner: Planner = Planner::new(database_name, &self.underlying, &statement);
-      let plan = planner.plan();
-      Err(format!("query: {}\nstatement: {:?}\nplan: {:?}", query, statement, plan))
+        let statement = Parser::parse_sql(query).map_err(|pe: ParserError| pe.to_string())?;
+        let mut planner: Planner = Planner::new(database_name, &self.underlying, &statement);
+        let plan = planner.plan();
+        Err(format!(
+            "query: {}\nstatement: {:?}\nplan: {:?}",
+            query, statement, plan
+        ))
     }
 }
 

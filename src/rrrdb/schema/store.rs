@@ -2,17 +2,17 @@ use std::error::Error;
 
 use crate::rrrdb::{
     schema::*,
-    underlying::{DBError, Underlying},
+    storage::{DBError, Storage},
 };
 
 pub(crate) struct SchemaStore<'a> {
-    db: &'a Underlying,
+    db: &'a Storage,
 }
 
 impl<'a> SchemaStore<'a> {
     const METADATA_SUFFIX: &'static str = "_rrrdb_metadata";
 
-    pub fn new(db: &'a Underlying) -> SchemaStore<'a> {
+    pub fn new(db: &'a Storage) -> SchemaStore<'a> {
         Self { db }
     }
 

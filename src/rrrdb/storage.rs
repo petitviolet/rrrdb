@@ -1,7 +1,7 @@
-use rocksdb::DB;
+use rocksdb::{ColumnFamilyDescriptor, DB};
 use serde::{de::DeserializeOwned, Serialize};
 
-pub struct Underlying {
+pub struct Storage {
     pub(crate) db: rocksdb::DB,
 }
 
@@ -23,9 +23,9 @@ impl From<String> for DBError {
     }
 }
 
-impl Underlying {
-    pub fn new(path: &str) -> Underlying {
-        Underlying {
+impl Storage {
+    pub fn new(path: &str) -> Storage {
+        Storage {
             db: DB::open_default(path).unwrap(),
         }
     }

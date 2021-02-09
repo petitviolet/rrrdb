@@ -1,7 +1,7 @@
 use std::todo;
 
-use crate::rrrdb::schema::*;
-use crate::rrrdb::{parser::*, schema::store::SchemaStore, underlying::Underlying};
+use crate::rrrdb::{schema::*, storage::Storage};
+use crate::rrrdb::{parser::*, schema::store::SchemaStore};
 
 // SQL -> KVS requests
 pub(crate) struct Planner<'a> {
@@ -42,7 +42,7 @@ pub(crate) struct Filter {
 }
 
 impl<'a> Planner<'a> {
-    pub fn new(database_name: &str, underlying: &'a Underlying, sql: &'a Statement) -> Self {
+    pub fn new(database_name: &str, underlying: &'a Storage, sql: &'a Statement) -> Self {
         let schema_store = SchemaStore::new(underlying);
         let database = match schema_store.find_schema(database_name) {
             Ok(Some(database)) => { database },
