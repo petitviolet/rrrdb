@@ -1,7 +1,7 @@
 use std::todo;
 
-use crate::rrrdb::{schema::*, storage::Storage};
 use crate::rrrdb::{parser::*, schema::store::SchemaStore};
+use crate::rrrdb::{schema::*, storage::Storage};
 
 // SQL -> KVS requests
 pub(crate) struct Planner<'a> {
@@ -18,6 +18,7 @@ pub(crate) enum Plan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct SelectPlan {
+    pub(crate) database: Database,
     pub(crate) plans: Vec<SelectTablePlan>,
     pub(crate) projections: Vec<ProjectionPlan>,
 }
@@ -45,9 +46,9 @@ impl<'a> Planner<'a> {
     pub fn new(database_name: &str, underlying: &'a Storage, sql: &'a Statement) -> Self {
         let schema_store = SchemaStore::new(underlying);
         let database = match schema_store.find_schema(database_name) {
-            Ok(Some(database)) => { database },
-            Ok(None) => { todo!("database {} doesn't exist", database_name) },
-            Err(err) => { panic!("Unexpected error failed {:?}", err) }
+            Ok(Some(database)) => database,
+            Ok(None) => todo!("database {} doesn't exist", database_name),
+            Err(err) => panic!("Unexpected error failed {:?}", err),
         };
 
         Self {
@@ -69,6 +70,7 @@ impl<'a> Planner<'a> {
             .into_iter()
             .flat_map(|table_name| self.database.table(&table_name));
         let mut select_plan = SelectPlan {
+            database: self.database,
             plans: vec![],
             projections: vec![],
         };
@@ -120,6 +122,6 @@ impl<'a> Planner<'a> {
                     select_plan.plans.push(select_table_plan);
                 }
             });
-          Plan::SelectPlan(select_plan)
+        Plan::SelectPlan(select_plan)
     }
 }
