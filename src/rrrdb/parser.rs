@@ -15,7 +15,7 @@ impl ToString for ParserError {
     fn to_string(&self) -> String {
         match self {
             ParserError::TokenizeError(msg) => format!("TokenizeError: {}", msg),
-            ParserError::ParseError(msg) => format!("ParseError: {}", msg)
+            ParserError::ParseError(msg) => format!("ParseError: {}", msg),
         }
     }
 }

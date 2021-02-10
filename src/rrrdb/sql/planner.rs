@@ -70,7 +70,7 @@ impl<'a> Planner<'a> {
             .into_iter()
             .flat_map(|table_name| self.database.table(&table_name));
         let mut select_plan = SelectPlan {
-            database: self.database,
+            database: self.database.clone(),
             plans: vec![],
             projections: vec![],
         };
