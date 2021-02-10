@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::rrrdb::{
     schema::*,
-    storage::{DBError, Storage},
+    storage::{DBError, Namespace, Storage},
 };
 
 pub(crate) struct SchemaStore<'a> {
@@ -10,7 +10,7 @@ pub(crate) struct SchemaStore<'a> {
 }
 
 impl<'a> SchemaStore<'a> {
-    const METADATA_SUFFIX: &'static str = "_rrrdb_metadata";
+    const SCHEMA_SUFFIX: &'static str = "_schema";
 
     pub fn new(db: &'a Storage) -> SchemaStore<'a> {
         Self { db }
@@ -18,12 +18,13 @@ impl<'a> SchemaStore<'a> {
 
     pub fn find_schema(&self, database_name: &str) -> Result<Option<Database>, DBError> {
         self.db.get_serialized::<Database>(
-            format!("{}{}", database_name, Self::METADATA_SUFFIX).as_ref(),
+            &Namespace::database(database_name),
+            format!("{}{}", database_name, Self::SCHEMA_SUFFIX).as_ref(),
         )
     }
 
     pub fn save_schema(&self, database: Database) -> Result<(), DBError> {
-        let key = format!("{}{}", &database.name, Self::METADATA_SUFFIX);
-        self.db.put_serialized(&key, database)
+        let key = format!("{}{}", &database.name, Self::SCHEMA_SUFFIX);
+        self.db.put_serialized(&Namespace::Metadata, &key, database)
     }
 }
