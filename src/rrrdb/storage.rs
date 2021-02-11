@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
+use rocksdb::DBIterator;
 use rocksdb_factory::RocksDBFactory;
 use serde::{de::DeserializeOwned, Serialize};
 mod rocksdb_factory;
@@ -7,6 +8,22 @@ mod rocksdb_factory;
 pub struct Storage {
     factory: RocksDBFactory,
     pub(crate) cfs: HashMap<String, rocksdb::DB>,
+}
+
+pub struct RecordIterator<'a> {
+    db_iterator: DBIterator<'a>,
+}
+impl<'a> Iterator for RecordIterator<'a> {
+    type Item = (String, Box<[u8]>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let n = self.db_iterator.next();
+        n.map(|(key, value)| {
+            let string_key = String::from_utf8(key.to_vec())
+                .expect(&format!("Invalid key was found. key: {:?}", key));
+            (string_key, value)
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -74,6 +91,13 @@ impl Storage {
         match self.cfs.get(&namespace.cf_name()) {
             Some(cf) => cf,
             None => panic!("There is no open Column Family for {:?}", namespace),
+        }
+    }
+
+    // pub fn iterate<'a>(&'a self, namespace: &Namespace) -> DBIterator<'a> {
+    pub fn iterator<'a>(&'a self, namespace: &Namespace) -> RecordIterator<'a> {
+        RecordIterator {
+            db_iterator: self.db(namespace).iterator(rocksdb::IteratorMode::Start),
         }
     }
 
