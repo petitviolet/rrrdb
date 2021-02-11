@@ -56,20 +56,32 @@ pub struct ColumnMetadata {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        schema::{store::SchemaStore, *},
+        storage::Storage,
+        DBResult, RrrDB,
+    };
 
     #[test]
     fn run() {
-      assertion_execute_select(
-        "SELECT id FROM users", 
-        Err("hoge".to_string())
-      )
+        assertion_execute_select("SELECT id FROM users", Err("hoge".to_string()))
     }
 
-
     fn assertion_execute_select(sql: &str, expected: DBResult) {
-      let mut db = RrrDB::new("./tmp/database");
-      let result = db.execute("test_db", sql);
+        let mut db = RrrDB::new("./tmp/database");
+        let store = SchemaStore::new(&db.underlying);
+        let database = Database {
+            name: String::from("test_db"),
+            tables: vec![Table {
+                name: String::from("users"),
+                columns: vec![Column {
+                    name: String::from("id"),
+                    column_type: ColumnType::Integer,
+                }],
+            }],
+        };
+        store.save_schema(database).expect("failed to save schema");
+        let result = db.execute("test_db", sql);
         assert_eq!(result, expected);
     }
 }
