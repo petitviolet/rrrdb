@@ -44,8 +44,30 @@ pub(crate) struct Column {
     pub column_type: ColumnType,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum ColumnType {
-    Varchar,
-    Integer,
+macro_rules! define_column_types {
+  ($($column_type:ident), *) => {
+      #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+      pub(crate) enum ColumnType {
+        $($column_type), *
+      }
+      impl ColumnType {
+        pub fn find(s: &str) -> Option<Self> {
+          match s {
+            $(s if s.to_lowercase() == stringify!($column_type).to_lowercase() => { Some(Self::$column_type) },)
+            *
+            _ => None,
+          }
+        }
+      }
+      impl ToString for ColumnType {
+        fn to_string(&self) -> String {
+          match self {
+            $(ColumnType::$column_type => stringify!($column_type).to_lowercase(),)
+            *
+          }
+        }
+      }
+  };
 }
+
+define_column_types!(Varchar, Integer);
