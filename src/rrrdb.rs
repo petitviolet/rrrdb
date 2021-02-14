@@ -38,20 +38,47 @@ pub struct ResultSet {
     records: Vec<Record>,
     metadata: ResultMetadata,
 }
+impl ResultSet {
+    pub fn new(records: Vec<Record>, metadata: ResultMetadata) -> Self {
+        Self { records, metadata }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Record {
     values: Vec<ColumnValue>,
 }
+impl Record {
+    pub fn new(values: Vec<ColumnValue>) -> Self {
+        Self { values }
+    }
+}
 pub type ColumnValue = Vec<u8>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultMetadata {
     columns: Vec<ColumnMetadata>,
+}
+impl ResultMetadata {
+    pub fn new(column_metadatas: Vec<ColumnMetadata>) -> Self {
+        Self {
+            columns: column_metadatas,
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnMetadata {
     column_name: String,
     column_type: String,
+}
+
+impl ColumnMetadata {
+    pub fn new(name: &str, _type: &str) -> Self {
+        Self {
+            column_name: name.to_string(),
+            column_type: _type.to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
