@@ -1,13 +1,13 @@
-use std::todo;
+use std::{ops::Deref, todo};
 
 use storage::Namespace;
 
 use crate::rrrdb::{
     storage::{self, Storage},
-    DBResult,
+    DBResult, FieldMetadata, Record, ResultMetadata, ResultSet,
 };
 
-use super::planner::{Plan, SelectPlan, SelectTablePlan};
+use super::planner::{Plan, ProjectionPlan, SelectPlan, SelectTablePlan};
 
 pub(crate) struct Executor<'a> {
     storage: &'a Storage,
@@ -27,24 +27,58 @@ impl<'a> Executor<'a> {
     }
 
     fn execute_select(&mut self, select_plan: SelectPlan) -> DBResult {
-        let projection_plans = &select_plan.projections;
-        (&select_plan.plans).into_iter().map(
-            |SelectTablePlan {
-                 table,
-                 select_columns,
-                 filter,
-             }| {
-                let values = select_columns.into_iter().flat_map(|column| {
-                    let namespace = Namespace::table(&select_plan.database.name, &table.name);
-                    // TODO: concurrent
-                    self.storage
-                        .iterator(&namespace)
-                        .map(|(key, value_bytes)| {});
-                    vec![1]
-                });
-                todo!()
-            },
-        );
-        todo!()
+        let field_metadatas: Vec<FieldMetadata> = select_plan.result_metadata();
+        let namespaces: Vec<Namespace> = (&select_plan.plans)
+            .clone()
+            .into_iter()
+            .map(|p| Namespace::table(&select_plan.database.name, &p.table.name))
+            .collect();
+        // TODO: concurrent
+        let records = self
+            .storage
+            .iterator(&namespaces[0]) // iterate over given namespace(table)
+            .map(|(key, value_bytes)| {
+                match String::from_utf8(value_bytes.into_vec())
+                    .map(|j| serde_json::from_str::<serde_json::Value>(&j))
+                {
+                    Ok(Ok(json)) => {
+                        let row: &serde_json::Map<String, serde_json::Value> =
+                            &json.as_object().unwrap().to_owned();
+                        let field_values: Vec<Vec<u8>> = (&field_metadatas)
+                            .into_iter()
+                            .map(|meta| {
+                                let found =
+                                    row.into_iter().find_map(|(column_name, column_value)| {
+                                        if column_name.deref() == meta.field_name {
+                                            Some(column_value.as_str().unwrap().as_bytes().to_vec())
+                                        } else {
+                                            None
+                                        }
+                                    });
+                                found.expect(&format!(
+                                    "field({:?}) not found in a row({:?})",
+                                    meta, row
+                                ))
+                            })
+                            .collect();
+                        Record::new(field_values)
+                    }
+                    Ok(Err(err)) => {
+                        panic!(
+                            "unexpected formatted row for key({:?}). err = {:?}",
+                            key, err
+                        );
+                    }
+                    Err(err) => {
+                        panic!(
+                            "unexpected formatted row for key({:?}). err = {:?}",
+                            key, err
+                        );
+                    }
+                }
+            })
+            .collect();
+        let result_set = ResultSet::new(records, ResultMetadata::new(field_metadatas));
+        Ok(result_set)
     }
 }
