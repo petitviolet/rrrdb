@@ -57,26 +57,26 @@ pub type FieldValue = Vec<u8>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultMetadata {
-    columns: Vec<ColumnMetadata>,
+    fields: Vec<FieldMetadata>,
 }
 impl ResultMetadata {
-    pub fn new(column_metadatas: Vec<ColumnMetadata>) -> Self {
+    pub fn new(field_metadatas: Vec<FieldMetadata>) -> Self {
         Self {
-            columns: column_metadatas,
+            fields: field_metadatas,
         }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ColumnMetadata {
-    column_name: String,
-    column_type: String,
+pub struct FieldMetadata {
+    field_name: String,
+    field_type: String,
 }
 
-impl ColumnMetadata {
+impl FieldMetadata {
     pub fn new(name: &str, _type: &str) -> Self {
         Self {
-            column_name: name.to_string(),
-            column_type: _type.to_string(),
+            field_name: name.to_string(),
+            field_type: _type.to_string(),
         }
     }
 }
