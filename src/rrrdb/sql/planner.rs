@@ -39,29 +39,25 @@ pub(crate) struct SelectTablePlan {
 
 impl SelectPlan {
     pub fn result_metadata(&self) -> Vec<FieldMetadata> {
+        let projections = &self.projections;
         let mut field_metadatas = (&self.plans).into_iter().fold(
             vec![],
-            |metadatas,
+            |mut metadatas,
              SelectTablePlan {
                  table,
                  select_columns,
                  filter,
              }| {
                 let found = select_columns.into_iter().find_map(|column| {
-                    self.projections
-                        .into_iter()
-                        .enumerate()
-                        .find_map(|(idx, p)| {
-                            if p.table.name == table.name && p.column.name == column.name {
-                                let metadata = FieldMetadata::new(
-                                    &column.name,
-                                    &column.column_type.to_string(),
-                                );
-                                Some((idx, metadata))
-                            } else {
-                                None
-                            }
-                        })
+                    projections.into_iter().enumerate().find_map(|(idx, p)| {
+                        if p.table.name == table.name && p.column.name == column.name {
+                            let metadata =
+                                FieldMetadata::new(&column.name, &column.column_type.to_string());
+                            Some((idx, metadata))
+                        } else {
+                            None
+                        }
+                    })
                 });
                 match found {
                     Some(found) => {
