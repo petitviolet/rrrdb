@@ -46,14 +46,14 @@ impl ResultSet {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Record {
-    values: Vec<ColumnValue>,
+    values: Vec<FieldValue>,
 }
 impl Record {
-    pub fn new(values: Vec<ColumnValue>) -> Self {
+    pub fn new(values: Vec<FieldValue>) -> Self {
         Self { values }
     }
 }
-pub type ColumnValue = Vec<u8>;
+pub type FieldValue = Vec<u8>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultMetadata {
