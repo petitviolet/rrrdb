@@ -1,6 +1,6 @@
 use std::todo;
 
-use crate::rrrdb::{parser::*, schema::store::SchemaStore};
+use crate::rrrdb::{parser::*, schema::store::SchemaStore, FieldMetadata};
 use crate::rrrdb::{schema::*, storage::Storage};
 
 // SQL -> KVS requests
@@ -35,6 +35,52 @@ pub(crate) struct SelectTablePlan {
     pub(crate) table: Table,
     pub(crate) select_columns: Vec<Column>,
     pub(crate) filter: Option<Filter>,
+}
+
+impl SelectPlan {
+    pub fn result_metadata(&self) -> Vec<FieldMetadata> {
+        let mut field_metadatas = (&self.plans).into_iter().fold(
+            vec![],
+            |metadatas,
+             SelectTablePlan {
+                 table,
+                 select_columns,
+                 filter,
+             }| {
+                let found = select_columns.into_iter().find_map(|column| {
+                    self.projections
+                        .into_iter()
+                        .enumerate()
+                        .find_map(|(idx, p)| {
+                            if p.table.name == table.name && p.column.name == column.name {
+                                let metadata = FieldMetadata::new(
+                                    &column.name,
+                                    &column.column_type.to_string(),
+                                );
+                                Some((idx, metadata))
+                            } else {
+                                None
+                            }
+                        })
+                });
+                match found {
+                    Some(found) => {
+                        metadatas.push(found);
+                    }
+                    None => panic!(
+                        "SelectTablePlans({:?}) don't match ProjectionPlans({:?})",
+                        self.plans, self.projections
+                    ),
+                }
+                metadatas
+            },
+        );
+        field_metadatas.sort_by(|(idx_0, _), (idx_1, _)| idx_0.cmp(idx_1));
+        field_metadatas
+            .into_iter()
+            .map(|(_, metadata)| metadata)
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
