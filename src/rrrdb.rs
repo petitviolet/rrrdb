@@ -75,8 +75,8 @@ impl ResultMetadata {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldMetadata {
-    field_name: String,
-    field_type: String,
+    pub(crate) field_name: String,
+    pub(crate) field_type: String,
 }
 
 impl FieldMetadata {
