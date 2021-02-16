@@ -2,7 +2,7 @@ use parser::Parser;
 
 use crate::rrrdb::storage::Storage;
 
-use self::{parser::ParserError, sql::planner::Planner};
+use self::{parser::ParserError, sql::planner::Planner, sql::executor::Executor};
 
 mod parser;
 mod schema;
@@ -24,10 +24,8 @@ impl RrrDB {
         let statement = Parser::parse_sql(query).map_err(|pe: ParserError| pe.to_string())?;
         let mut planner: Planner = Planner::new(database_name, &self.underlying, &statement);
         let plan = planner.plan();
-        Err(format!(
-            "query: {}\nstatement: {:?}\nplan: {:?}",
-            query, statement, plan
-        ))
+        let mut executor = Executor::new(&mut self.underlying, plan);
+        executor.execute()
     }
 }
 
