@@ -22,7 +22,7 @@ impl RrrDB {
 
     pub fn execute(&mut self, database_name: &str, query: &str) -> DBResult {
         let statement = Parser::parse_sql(query).map_err(|pe: ParserError| pe.to_string())?;
-        let mut planner: Planner = Planner::new(database_name, &self.underlying, &statement);
+        let mut planner: Planner = Planner::new(database_name, &mut self.underlying, &statement);
         let plan = planner.plan();
         let mut executor = Executor::new(&mut self.underlying, plan);
         executor.execute()
@@ -101,7 +101,7 @@ mod tests {
 
     fn assertion_execute_select(sql: &str, expected: DBResult) {
         let mut db = RrrDB::new("./tmp/database");
-        let store = SchemaStore::new(&db.underlying);
+        let mut store = SchemaStore::new(&mut db.underlying);
         let database = Database {
             name: String::from("test_db"),
             tables: vec![Table {

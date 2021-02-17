@@ -85,8 +85,8 @@ pub(crate) struct Filter {
 }
 
 impl<'a> Planner<'a> {
-    pub fn new(database_name: &str, underlying: &'a Storage, sql: &'a Statement) -> Self {
-        let schema_store = SchemaStore::new(underlying);
+    pub fn new(database_name: &str, underlying: &'a mut Storage, sql: &'a Statement) -> Self {
+        let mut schema_store = SchemaStore::new(underlying);
         let database = match schema_store.find_schema(database_name) {
             Ok(Some(database)) => database,
             Ok(None) => todo!("database {} doesn't exist", database_name),

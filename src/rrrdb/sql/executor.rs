@@ -10,12 +10,12 @@ use crate::rrrdb::{
 use super::planner::{Plan, ProjectionPlan, SelectPlan, SelectTablePlan};
 
 pub(crate) struct Executor<'a> {
-    storage: &'a Storage,
+    storage: &'a mut Storage,
     plan: Plan,
 }
 
 impl<'a> Executor<'a> {
-    pub fn new(storage: &'a Storage, plan: Plan) -> Self {
+    pub fn new(storage: &'a mut Storage, plan: Plan) -> Self {
         Self { storage, plan }
     }
 
@@ -33,6 +33,7 @@ impl<'a> Executor<'a> {
             .into_iter()
             .map(|p| Namespace::table(&select_plan.database.name, &p.table.name))
             .collect();
+
         // TODO: concurrent
         let records = self
             .storage
