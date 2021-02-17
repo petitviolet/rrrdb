@@ -76,37 +76,42 @@ impl From<String> for DBError {
 impl Storage {
     pub fn new(path: &str) -> Storage {
         let factory = RocksDBFactory::new(path);
-        let cfs = HashMap::new();
+        let mut cfs = HashMap::new();
+        let cf_name = Namespace::Metadata.cf_name();
+        let cf = factory.open_column_family(&cf_name);
+        cfs.insert(cf_name.to_string(), cf);
         Storage { factory, cfs }
     }
 
-    fn open_cf(&mut self, namespace: &Namespace) -> () {
-        let cf_name = namespace.cf_name();
-        let cf = self.factory.open_column_family(&cf_name);
-        self.cfs.insert(cf_name.to_string(), cf);
-        self.cfs.get(&cf_name).unwrap();
-    }
+    // fn db<'a>(&'a self, namespace: &Namespace) -> &'a rocksdb::DB {
+    //     match self.cfs.get(&namespace.cf_name()) {
+    //         Some(db) => db,
+    //         None => {
+    //             panic!("There is no open Column Family for {:?}", namespace)
+    //         }
+    //     }
+    // }
 
-    fn db(&self, namespace: &Namespace) -> &rocksdb::DB {
-        match self.cfs.get(&namespace.cf_name()) {
-            Some(cf) => cf,
-            None => panic!("There is no open Column Family for {:?}", namespace),
-        }
+    fn db<'a>(&'a mut self, namespace: &Namespace) -> &'a rocksdb::DB {
+        let key = namespace.cf_name();
+        self.cfs
+            .entry(key.clone())
+            .or_insert(self.factory.open_column_family(&key))
     }
 
     // pub fn iterate<'a>(&'a self, namespace: &Namespace) -> DBIterator<'a> {
-    pub fn iterator<'a>(&'a self, namespace: &Namespace) -> RecordIterator<'a> {
+    pub fn iterator<'a>(&'a mut self, namespace: &Namespace) -> RecordIterator<'a> {
         RecordIterator {
             db_iterator: self.db(namespace).iterator(rocksdb::IteratorMode::Start),
         }
     }
 
-    pub fn get(&self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
+    pub fn get(&mut self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
         self.db(namespace).get(key).map_err(|e| DBError::from(e))
     }
 
     pub fn get_serialized<T: DeserializeOwned>(
-        &self,
+        &mut self,
         namespace: &Namespace,
         key: &str,
     ) -> Result<Option<T>, DBError> {
@@ -122,14 +127,14 @@ impl Storage {
         })
     }
 
-    pub fn put(&self, namespace: &Namespace, key: &str, value: Vec<u8>) -> Result<(), DBError> {
+    pub fn put(&mut self, namespace: &Namespace, key: &str, value: Vec<u8>) -> Result<(), DBError> {
         self.db(namespace)
             .put(key, value)
             .map_err(|e| DBError::from(e))
     }
 
     pub fn put_serialized<T: Serialize + std::fmt::Debug>(
-        &self,
+        &mut self,
         namespace: &Namespace,
         key: &str,
         value: T,
