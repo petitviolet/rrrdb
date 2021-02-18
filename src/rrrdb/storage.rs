@@ -1,13 +1,13 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ops::Deref, todo};
 
-use rocksdb::DBIterator;
+use rocksdb::{ColumnFamily, DBIterator};
 use rocksdb_factory::RocksDBFactory;
 use serde::{de::DeserializeOwned, Serialize};
 mod rocksdb_factory;
 
 pub struct Storage {
     factory: RocksDBFactory,
-    pub(crate) cfs: HashMap<String, rocksdb::DB>,
+    rocksdb: rocksdb::DB,
 }
 
 pub struct RecordIterator<'a> {
@@ -53,6 +53,7 @@ impl Namespace {
             } => format!("{}_{}", database_name, name),
         }
     }
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -76,11 +77,22 @@ impl From<String> for DBError {
 impl Storage {
     pub fn new(path: &str) -> Storage {
         let factory = RocksDBFactory::new(path);
-        let mut cfs = HashMap::new();
+        let mut default_db = factory.open_default();
         let cf_name = Namespace::Metadata.cf_name();
-        let cf = factory.open_column_family(&cf_name);
-        cfs.insert(cf_name.to_string(), cf);
-        Storage { factory, cfs }
+        factory.open_column_family(&mut default_db, &cf_name);
+        Storage { factory, rocksdb: default_db }
+    }
+
+    fn column_family(&mut self, namespace: &Namespace) -> &ColumnFamily { 
+        let cf_name = namespace.cf_name();
+        match (&self.rocksdb).cf_handle(&cf_name) {
+          Some(cf) => cf,
+          None => {
+            self.factory.open_column_family(&mut self.rocksdb, &cf_name);
+            // self.rocksdb.create_cf(cf_name, todo!());
+            self.rocksdb.cf_handle(&cf_name).unwrap()
+          }
+        }
     }
 
     // fn db<'a>(&'a self, namespace: &Namespace) -> &'a rocksdb::DB {
@@ -92,22 +104,23 @@ impl Storage {
     //     }
     // }
 
-    fn db<'a>(&'a mut self, namespace: &Namespace) -> &'a rocksdb::DB {
-        let key = namespace.cf_name();
-        self.cfs
-            .entry(key.clone())
-            .or_insert(self.factory.open_column_family(&key))
-    }
+    // fn db<'a>(&'a mut self, namespace: &Namespace) -> &'a rocksdb::DB {
+    //     let key = namespace.cf_name();
+    //     self.cfs
+    //         .entry(key.clone())
+    //         .or_insert(self.factory.open_column_family(self.default_db, &key))
+    // }
 
     // pub fn iterate<'a>(&'a self, namespace: &Namespace) -> DBIterator<'a> {
     pub fn iterator<'a>(&'a mut self, namespace: &Namespace) -> RecordIterator<'a> {
+        let cf = self.column_family(namespace);
         RecordIterator {
-            db_iterator: self.db(namespace).iterator(rocksdb::IteratorMode::Start),
+            db_iterator: self.rocksdb.iterator_cf(cf, rocksdb::IteratorMode::Start),
         }
     }
 
     pub fn get(&mut self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
-        self.db(namespace).get(key).map_err(|e| DBError::from(e))
+        self.rocksdb.get_cf(self.column_family(namespace), key).map_err(|e| DBError::from(e))
     }
 
     pub fn get_serialized<T: DeserializeOwned>(
@@ -128,8 +141,8 @@ impl Storage {
     }
 
     pub fn put(&mut self, namespace: &Namespace, key: &str, value: Vec<u8>) -> Result<(), DBError> {
-        self.db(namespace)
-            .put(key, value)
+        self.rocksdb
+            .put_cf(self.column_family(namespace), key, value)
             .map_err(|e| DBError::from(e))
     }
 
