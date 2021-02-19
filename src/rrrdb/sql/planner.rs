@@ -7,7 +7,7 @@ use crate::rrrdb::{schema::*, storage::Storage};
 pub(crate) struct Planner<'a> {
     database: Database,
     schema_store: SchemaStore<'a>,
-    sql: &'a Statement,
+    sql: Statement,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -85,7 +85,7 @@ pub(crate) struct Filter {
 }
 
 impl<'a> Planner<'a> {
-    pub fn new(database_name: &str, underlying: &'a mut Storage, sql: &'a Statement) -> Self {
+    pub fn new(database_name: &str, underlying: &'a mut Storage, sql: Statement) -> Self {
         let mut schema_store = SchemaStore::new(underlying);
         let database = match schema_store.find_schema(database_name) {
             Ok(Some(database)) => database,
