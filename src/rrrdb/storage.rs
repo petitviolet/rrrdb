@@ -1,12 +1,9 @@
 use std::{collections::HashMap, ops::Deref, todo};
 
 use rocksdb::{ColumnFamily, DBIterator};
-use rocksdb_factory::RocksDBFactory;
 use serde::{de::DeserializeOwned, Serialize};
-mod rocksdb_factory;
 
 pub struct Storage {
-    factory: RocksDBFactory,
     rocksdb: rocksdb::DB,
 }
 
@@ -76,10 +73,8 @@ impl From<String> for DBError {
 
 impl Storage {
     pub fn new(path: &str) -> Storage {
-        let factory = RocksDBFactory::new(path);
         let mut default_db = factory.open_default();
         let cf_name = Namespace::Metadata.cf_name();
-        factory.open_column_family(&mut default_db, &cf_name);
         Storage { factory, rocksdb: default_db }
     }
 
