@@ -50,7 +50,6 @@ impl Namespace {
             } => format!("{}_{}", database_name, name),
         }
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -73,20 +72,30 @@ impl From<String> for DBError {
 
 impl Storage {
     pub fn new(path: &str) -> Storage {
-        let mut default_db = factory.open_default();
+        let mut rocksdb = rocksdb::DB::open_default(path).unwrap();
         let cf_name = Namespace::Metadata.cf_name();
-        Storage { factory, rocksdb: default_db }
+
+        Self::create_cf(&mut rocksdb, cf_name.as_ref());
+
+        Storage { rocksdb }
     }
 
-    fn column_family(&mut self, namespace: &Namespace) -> &ColumnFamily { 
+    fn create_cf(rocksdb: &mut rocksdb::DB, cf_name: &str) -> () {
+        let mut options = rocksdb::Options::default();
+        options.create_if_missing(true);
+        options.create_missing_column_families(true);
+        rocksdb.create_cf(cf_name, &options);
+    }
+
+    fn column_family(&self, namespace: &Namespace) -> &ColumnFamily {
         let cf_name = namespace.cf_name();
-        match (&self.rocksdb).cf_handle(&cf_name) {
-          Some(cf) => cf,
-          None => {
-            self.factory.open_column_family(&mut self.rocksdb, &cf_name);
-            // self.rocksdb.create_cf(cf_name, todo!());
-            self.rocksdb.cf_handle(&cf_name).unwrap()
-          }
+        match self.rocksdb.cf_handle(&cf_name) {
+            Some(cf) => cf,
+            None => {
+                Self::create_cf(&mut self.rocksdb, cf_name.as_ref());
+                // self.rocksdb.create_cf(cf_name, todo!());
+                self.rocksdb.cf_handle(&cf_name).unwrap()
+            }
         }
     }
 
@@ -115,7 +124,9 @@ impl Storage {
     }
 
     pub fn get(&mut self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
-        self.rocksdb.get_cf(self.column_family(namespace), key).map_err(|e| DBError::from(e))
+        self.rocksdb
+            .get_cf(self.column_family(namespace), key)
+            .map_err(|e| DBError::from(e))
     }
 
     pub fn get_serialized<T: DeserializeOwned>(
