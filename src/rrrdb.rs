@@ -31,7 +31,32 @@ impl RrrDB {
     }
 }
 
-pub type DBResult = Result<ResultSet, String>;
+pub type DBResult = Result<ResultSet, DBError>;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DBError {
+    pub(crate) message: String,
+}
+impl DBError {
+    pub(crate) fn namespace_not_found(namespace: &storage::Namespace) -> Self {
+        Self {
+            message: format!("ColumnFamily({}) not found", namespace.cf_name()),
+        }
+    }
+}
+
+impl From<rocksdb::Error> for DBError {
+    fn from(e: rocksdb::Error) -> Self {
+        Self {
+            message: e.into_string(),
+        }
+    }
+}
+impl From<String> for DBError {
+    fn from(e: String) -> Self {
+        Self { message: e }
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultSet {
@@ -90,15 +115,11 @@ impl FieldMetadata {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        schema::{store::SchemaStore, *},
-        storage::Storage,
-        DBResult, RrrDB,
-    };
+    use super::{DBError, DBResult, RrrDB, schema::{store::SchemaStore, *}};
 
     #[test]
     fn run() {
-        assertion_execute_select("SELECT id FROM users", Err("hoge".to_string()))
+        assertion_execute_select("SELECT id FROM users", Err(DBError { message: "hoge".to_string() }))
     }
 
     fn assertion_execute_select(sql: &str, expected: DBResult) {

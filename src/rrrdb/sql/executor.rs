@@ -35,9 +35,11 @@ impl<'a> Executor<'a> {
             .collect();
 
         // TODO: concurrent
-        let records = self
+        let iterator = self
             .storage
-            .iterator(&namespaces[0]) // iterate over given namespace(table)
+            .iterator(&namespaces[0])?; // iterate over given namespace(table)
+            
+        let records = iterator
             .map(|(key, value_bytes)| {
                 match String::from_utf8(value_bytes.into_vec())
                     .map(|j| serde_json::from_str::<serde_json::Value>(&j))
