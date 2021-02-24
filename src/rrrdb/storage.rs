@@ -1,33 +1,14 @@
-use std::{borrow::{Borrow, BorrowMut}, collections::HashMap, ops::{Deref, DerefMut}, sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard}, todo};
+use std::{collections::HashMap, ops::Deref, todo};
 
 use rocksdb::{ColumnFamily, DBIterator};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub struct Storage {
-    rocksdb: Arc<RwLock<rocksdb::DB>>,
-}
-
-pub(crate) struct Container<'a, T: 'a>(RwLockWriteGuard<'a, T>);
-
-impl <'a, T: 'a> Container<'a, T> {
-  fn get(&self) -> &T {
-    &self.0
-  }
-}
-impl<'a, T: 'a> DerefMut for Container<'a, T> {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-      self.0.borrow_mut()
-  }
-}
-impl<'a, T: 'a> Deref for Container<'a, T> {
-  type Target = T;
-  fn deref(&self) -> &Self::Target {
-      &self.0
-  }
+    rocksdb: rocksdb::DB,
 }
 
 pub struct RecordIterator<'a> {
-    db_iterator: Container<'a, DBIterator<'a>>,
+    db_iterator: DBIterator<'a>,
 }
 impl<'a> Iterator for RecordIterator<'a> {
     type Item = (String, Box<[u8]>);
@@ -96,7 +77,7 @@ impl Storage {
 
         Self::create_cf(&mut rocksdb, cf_name.as_ref());
 
-        Storage { rocksdb: Arc::new(RwLock::new(rocksdb)) }
+        Storage { rocksdb }
     }
 
     fn create_cf(rocksdb: &mut rocksdb::DB, cf_name: &str) -> () {
@@ -106,18 +87,15 @@ impl Storage {
         rocksdb.create_cf(cf_name, &options);
     }
 
-    fn column_family<'a>(&'a self, namespace: &Namespace) -> Container<'a, ColumnFamily> {
+    fn column_family(&self, namespace: &Namespace) -> &ColumnFamily {
         let cf_name = namespace.cf_name();
-        if let Some(cf) = self.rocksdb.read().unwrap().cf_handle(&cf_name) {
-          Container(cf)
-        } else {
-          // Self::create_cf(&mut self.rocksdb, cf_name.as_ref());
-          let mut options = rocksdb::Options::default();
-          options.create_if_missing(true);
-          options.create_missing_column_families(true);
-          self.rocksdb.write().unwrap().create_cf(cf_name, &options);
-          // self.rocksdb.create_cf(cf_name, todo!());
-          self.rocksdb.write().unwrap().cf_handle(&cf_name).unwrap()
+        match self.rocksdb.cf_handle(&cf_name) {
+            Some(cf) => cf,
+            None => {
+                Self::create_cf(&mut self.rocksdb, cf_name.as_ref());
+                // self.rocksdb.create_cf(cf_name, todo!());
+                self.rocksdb.cf_handle(&cf_name).unwrap()
+            }
         }
     }
 
@@ -140,16 +118,13 @@ impl Storage {
     // pub fn iterate<'a>(&'a self, namespace: &Namespace) -> DBIterator<'a> {
     pub fn iterator<'a>(&'a mut self, namespace: &Namespace) -> RecordIterator<'a> {
         let cf = self.column_family(namespace);
-        // let db_iterator = InnerIterator(self.rocksdb.read().unwrap().iterator_cf(cf, rocksdb::IteratorMode::Start));
         RecordIterator {
-            db_iterator: todo!(),
+            db_iterator: self.rocksdb.iterator_cf(cf, rocksdb::IteratorMode::Start),
         }
     }
 
-    pub fn get(&self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
+    pub fn get(&mut self, namespace: &Namespace, key: &str) -> Result<Option<Vec<u8>>, DBError> {
         self.rocksdb
-            .read()
-            .unwrap()
             .get_cf(self.column_family(namespace), key)
             .map_err(|e| DBError::from(e))
     }
@@ -173,7 +148,6 @@ impl Storage {
 
     pub fn put(&mut self, namespace: &Namespace, key: &str, value: Vec<u8>) -> Result<(), DBError> {
         self.rocksdb
-            .write().unwrap()
             .put_cf(self.column_family(namespace), key, value)
             .map_err(|e| DBError::from(e))
     }
