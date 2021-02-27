@@ -58,19 +58,30 @@ impl Namespace {
 
 impl Storage {
     pub fn new(path: &str) -> Storage {
-        let mut rocksdb = rocksdb::DB::open_default(path).unwrap();
-        let cf_name = Namespace::Metadata.cf_name();
+        let mut options = rocksdb::Options::default();
+        options.set_error_if_exists(false);
+        options.create_if_missing(true);
+        options.create_missing_column_families(true);
+        let cfs = rocksdb::DB::list_cf(&options, path).unwrap();
+        let need_to_create_metadata_cf = cfs
+            .iter()
+            .find(|cf| *cf == &Namespace::Metadata.cf_name())
+            .is_none();
+        let mut rocksdb = rocksdb::DB::open_cf(&options, path, cfs).unwrap();
 
-        Self::create_cf(&mut rocksdb, cf_name.as_ref());
+        if need_to_create_metadata_cf {
+            Self::create_column_family(&mut rocksdb, Namespace::Metadata.cf_name().as_ref())
+                .unwrap();
+        }
 
         Storage { rocksdb }
     }
 
-    fn create_cf(rocksdb: &mut rocksdb::DB, cf_name: &str) -> () {
-        let mut options = rocksdb::Options::default();
-        options.create_if_missing(true);
-        options.create_missing_column_families(true);
-        rocksdb.create_cf(cf_name, &options);
+    fn create_column_family(rocksdb: &mut rocksdb::DB, cf_name: &str) -> DBResult<()> {
+        let options = rocksdb::Options::default();
+        rocksdb
+            .create_cf(cf_name, &options)
+            .map_err(|e| DBError::from(e))
     }
 
     fn get_column_family(&self, namespace: &Namespace) -> DBResult<&ColumnFamily> {
