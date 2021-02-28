@@ -64,6 +64,7 @@ impl Tokenizer {
                 ')' => return_ok(Token::RParen),
                 '.' => return_ok(Token::Period),
                 ';' => return_ok(Token::SemiColon),
+                ',' => return_ok(Token::Comma),
                 ' ' => return_ok(Token::Whitespace(Whitespace::Space)),
                 '\t' => return_ok(Token::Whitespace(Whitespace::Tab)),
                 '\n' => return_ok(Token::Whitespace(Whitespace::Newline)),
@@ -88,7 +89,7 @@ impl Tokenizer {
                     s.push(ch);
                     while let Some(&ch) = peekable.peek() {
                         match ch {
-                            ' ' | '\n' | '\t' => {
+                            ',' | ' ' | '\n' | '\t' | '(' | ')' => {
                                 break;
                             }
                             _ => {
@@ -196,7 +197,7 @@ macro_rules! define_keywords {
   };
 }
 
-define_keywords!(Select, From, Where, Insert, Into, Values);
+define_keywords!(Create, Database, Table, Select, From, Where, Insert, Into, Values);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Whitespace {
@@ -266,6 +267,45 @@ mod tests {
                 Token::Eq,
                 Token::Whitespace(Whitespace::Space),
                 Token::Number("1".to_string()),
+            ],
+        );
+    }
+
+    #[test]
+    fn tokenize_create_database() {
+        tokenizer_assertion(
+            "CREATE DATABASE test_db",
+            vec![
+                Token::Keyword(Keyword::Create),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Database),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("test_db".to_string()),
+            ],
+        );
+    }
+
+    #[test]
+    fn tokenize_create_table() {
+        tokenizer_assertion(
+            "CREATE TABLE users (id integer, name varchar)",
+            vec![
+                Token::Keyword(Keyword::Create),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Table),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::LParen,
+                Token::Word("id".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("integer".to_string()),
+                Token::Comma,
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("name".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("varchar".to_string()),
+                Token::RParen,
             ],
         );
     }
