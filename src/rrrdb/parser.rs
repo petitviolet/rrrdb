@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ops::Deref};
+use std::{convert::TryInto, fmt::{Debug, Display}, ops::Deref};
 
 pub(crate) use ast::*;
 use tokenizer::*;
@@ -42,14 +42,18 @@ impl Parser {
         parser.parse()
     }
 
+    fn unexpected_token<A, T: Debug>(stage: &str, unexpected_token: &T, pos: usize) -> Result<A, ParserError> {
+        Err(ParserError::ParseError(format!(
+            "Unexpected token found while processing {}. token: '{:?}' at {}",
+            stage, unexpected_token, pos
+        )))
+    }
+
     pub fn parse(&mut self) -> Result<Statement, ParserError> {
         match self.next_token() {
             (Token::Keyword(tokenizer::Keyword::Select), _) => self.parse_select_statement(),
             (Token::Keyword(tokenizer::Keyword::Insert), _) => self.parse_insert_statement(),
-            (unexpected_token, pos) => Err(ParserError::ParseError(format!(
-                "Unexpected token: '{}' at {}",
-                unexpected_token, pos
-            ))),
+            (unexpected_token, pos) => Self::unexpected_token("parse", unexpected_token, pos),
         }
     }
 
@@ -80,10 +84,7 @@ impl Parser {
                     v.push(Projection::Expression(Expression::Ident(ident.to_string())));
                     Ok(true)
                 }
-                unexpected_token => Err(ParserError::ParseError(format!(
-                    "Unexpected token while parsing Projections: '{}' at {}",
-                    unexpected_token, pos
-                ))),
+                unexpected_token => Self::unexpected_token("projections", unexpected_token, pos),
             })?;
             v
         };
@@ -96,10 +97,7 @@ impl Parser {
                     v.push(name.to_owned());
                     Ok(v)
                 }
-                unexpected_token => Err(ParserError::ParseError(format!(
-                    "Unexpected token while parsing From: '{}' at {}",
-                    unexpected_token, pos
-                ))),
+                unexpected_token => Self::unexpected_token("from statement", unexpected_token, pos),
             }
         }?;
         let predicate: Predicate = self.parse_predicate()?;
@@ -184,10 +182,7 @@ impl Parser {
             Token::EOF => processing.ok_or(ParserError::ParseError(format!(
                 "Unexpected EOF while parse_expression",
             ))),
-            unexpected_token => Err(ParserError::ParseError(format!(
-                "Unexpected token while parse_expression: '{}' at {}",
-                unexpected_token, pos
-            ))),
+            unexpected_token => Self::unexpected_token("expression", unexpected_token, pos),
         }
     }
 
@@ -212,10 +207,7 @@ impl Parser {
                 let right = self.parse_expression(None)?;
                 Ok(op.build(left, right))
             }
-            None => Err(ParserError::ParseError(format!(
-                "LeftExpression for '{:?}' doesn't exist while parse_operator: at {}",
-                op, self.pos
-            ))),
+            None => Self::unexpected_token("Left expression", &op, self.pos),
         }
     }
 
