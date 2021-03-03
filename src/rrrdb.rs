@@ -22,7 +22,8 @@ impl RrrDB {
 
     pub fn execute(&mut self, database_name: &str, query: &str) -> DBResult {
         let plan = {
-            let statement = Parser::parse_sql(query).map_err(|pe: ParserError| pe.to_string())?;
+            let statement = Parser::parse_sql(Some(database_name.to_string()), query)
+                .map_err(|pe: ParserError| pe.to_string())?;
             let mut planner: Planner = Planner::new(database_name, &mut self.underlying, statement);
             planner.plan()
         };

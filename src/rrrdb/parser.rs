@@ -29,16 +29,21 @@ impl From<TokenizeError> for ParserError {
 pub(crate) struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    database_name: Option<String>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+    pub fn new(tokens: Vec<Token>, database_name: Option<String>) -> Self {
+        Self {
+            tokens,
+            pos: 0,
+            database_name,
+        }
     }
 
-    pub fn parse_sql(query: &str) -> Result<Statement, ParserError> {
+    pub fn parse_sql(database_name: Option<String>, query: &str) -> Result<Statement, ParserError> {
         let tokens = Tokenizer::new(query).tokenize()?;
-        let mut parser = Self::new(tokens);
+        let mut parser = Self::new(tokens, database_name);
         parser.parse()
     }
 
