@@ -1,7 +1,11 @@
+use crate::rrrdb::schema::Column;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Statement {
     Select(Query),
     Insert(Insert),
+    CreateDatabase(CreateDatabase),
+    CreateTable(CreateTable),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Query {
@@ -41,6 +45,44 @@ impl Predicate {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Insert {
     // TODO
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct CreateDatabase {
+    name: String,
+}
+impl CreateDatabase {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct CreateTable {
+    database_name: String,
+    table_name: String,
+    column_definitions: Vec<ColumnDefinition>,
+}
+impl CreateTable {
+    pub fn new(
+        database_name: String,
+        table_name: String,
+        column_definitions: Vec<ColumnDefinition>,
+    ) -> Self {
+        Self {
+            database_name,
+            table_name,
+            column_definitions,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct ColumnDefinition {
+    name: String,
+    column_type: String,
+}
+impl ColumnDefinition {
+    pub fn new(name: String, column_type: String) -> Self {
+        Self { name, column_type }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -104,6 +104,8 @@ impl<'a> Planner<'a> {
         match &self.sql {
             Statement::Select(query) => self.build_select_query_plan(query.clone()),
             Statement::Insert(insert) => todo!(),
+            Statement::CreateDatabase(_) => todo!(),
+            Statement::CreateTable(_) => todo!(),
         }
     }
 
