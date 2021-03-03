@@ -1,4 +1,8 @@
-use std::{convert::TryInto, fmt::{Debug, Display}, ops::Deref};
+use std::{
+    convert::TryInto,
+    fmt::{Debug, Display},
+    ops::Deref,
+};
 
 pub(crate) use ast::*;
 use tokenizer::*;
@@ -47,7 +51,11 @@ impl Parser {
         parser.parse()
     }
 
-    fn unexpected_token<A, T: Debug>(stage: &str, unexpected_token: &T, pos: usize) -> Result<A, ParserError> {
+    fn unexpected_token<A, T: Debug>(
+        stage: &str,
+        unexpected_token: &T,
+        pos: usize,
+    ) -> Result<A, ParserError> {
         Err(ParserError::ParseError(format!(
             "Unexpected token found while processing {}. token: '{:?}' at {}",
             stage, unexpected_token, pos
@@ -58,6 +66,7 @@ impl Parser {
         match self.next_token() {
             (Token::Keyword(tokenizer::Keyword::Select), _) => self.parse_select_statement(),
             (Token::Keyword(tokenizer::Keyword::Insert), _) => self.parse_insert_statement(),
+            (Token::Keyword(tokenizer::Keyword::Create), _) => self.parse_create_statement(),
             (unexpected_token, pos) => Self::unexpected_token("parse", unexpected_token, pos),
         }
     }
@@ -113,6 +122,91 @@ impl Parser {
 
     fn parse_insert_statement(&mut self) -> Result<Statement, ParserError> {
         todo!("parse insert")
+    }
+
+    fn parse_create_statement(&mut self) -> Result<Statement, ParserError> {
+        match self.next_token() {
+            (Token::Keyword(tokenizer::Keyword::Database), _) => {
+                self.parse_create_database_statement()
+            }
+            (Token::Keyword(tokenizer::Keyword::Table), _) => self.parse_create_table_statement(),
+            (unexpected_token, pos) => {
+                Self::unexpected_token("create statement", unexpected_token, pos)
+            }
+        }
+    }
+    fn parse_create_database_statement(&mut self) -> Result<Statement, ParserError> {
+        match self.next_token() {
+            (Token::Word(database_name), _) => {
+                let stmt = Statement::CreateDatabase(CreateDatabase::new(database_name.to_owned()));
+                Ok(stmt)
+            }
+            (unexpected_token, pos) => {
+                Self::unexpected_token("create database statement", unexpected_token, pos)
+            }
+        }
+    }
+
+    fn parse_create_table_statement(&mut self) -> Result<Statement, ParserError> {
+        match self.next_token() {
+            (Token::Word(table_name), _) => {
+                let table_name = table_name.to_owned(); // enable to use self.database_name
+                let columns = self.parse_create_table_column_definitions()?;
+                let stmt = Statement::CreateTable(CreateTable::new(
+                    self.database_name.clone().unwrap().to_string(),
+                    table_name,
+                    columns,
+                ));
+                Ok(stmt)
+            }
+            (unexpected_token, pos) => {
+                Self::unexpected_token("create database statement", unexpected_token, pos)
+            }
+        }
+    }
+
+    // create table :table_name \((:column_name :column_type)(, :column_name :column_type)*\)
+    fn parse_create_table_column_definitions(
+        &mut self,
+    ) -> Result<Vec<ColumnDefinition>, ParserError> {
+        match self.next_token() {
+            (&Token::LParen, _) => Ok(()),
+            (unexpected_token, pos) => {
+                Self::unexpected_token("create table column definitions", unexpected_token, pos)
+            }
+        }?;
+        let mut results = vec![];
+        let mut is_rparen = false;
+        loop {
+            let mut v = vec![];
+            self.consume_tokens(|token, pos| match token {
+                &Token::RParen => {
+                    is_rparen = true;
+                    Ok(false)
+                }
+                &Token::EOF => {
+                    Self::unexpected_token("create table column definitions", &Token::EOF, pos)
+                }
+                &Token::Comma => Ok(false),
+                token => {
+                    v.push(token.clone());
+                    Ok(true)
+                }
+            })?;
+            if let &[Token::Word(column_name), Token::Word(column_type)] = &&v[..] {
+                results.push(ColumnDefinition::new(
+                    column_name.to_owned(),
+                    column_type.to_owned(),
+                ));
+            } else {
+                return Self::unexpected_token("create table column definitions", &v, self.pos);
+            }
+            if is_rparen {
+                break;
+            }
+        }
+
+        Ok(results)
     }
 
     // return true if the next token is EOF, otherwise false
@@ -340,8 +434,56 @@ mod tests {
         );
     }
 
+    #[test]
+    fn parse_create_database() {
+        parser_assertion(
+            vec![
+                // CREATE DATABASE test_db
+                Token::Keyword(Keyword::Create),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Database),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("test_db".to_string()),
+            ],
+            Statement::CreateDatabase(CreateDatabase::new("test_db".to_string())),
+        );
+    }
+
+    #[test]
+    fn parse_create_table() {
+        parser_assertion(
+            vec![
+                // CREATE TABLE users (id integer, name varchar),
+                Token::Keyword(Keyword::Create),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Table),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::LParen,
+                Token::Word("id".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("integer".to_string()),
+                Token::Comma,
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("name".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("varchar".to_string()),
+                Token::RParen,
+            ],
+            Statement::CreateTable(CreateTable::new(
+                "test_db".to_string(),
+                "users".to_string(),
+                vec![
+                    ColumnDefinition::new("id".to_string(), "integer".to_string()),
+                    ColumnDefinition::new("name".to_string(), "varchar".to_string()),
+                ],
+            )),
+        );
+    }
+
     fn parser_assertion(tokens: Vec<Token>, expected: Statement) {
-        let mut parser = Parser::new(tokens);
+        let mut parser = Parser::new(tokens, Some("test_db".to_string()));
         let result = parser.parse();
         assert!(result.is_ok(), "result: {:?}", result);
         let tokens = result.unwrap();
