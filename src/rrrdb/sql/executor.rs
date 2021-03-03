@@ -35,10 +35,8 @@ impl<'a> Executor<'a> {
             .collect();
 
         // TODO: concurrent
-        let iterator = self
-            .storage
-            .iterator(&namespaces[0])?; // iterate over given namespace(table)
-            
+        let iterator = self.storage.iterator(&namespaces[0])?; // iterate over given namespace(table)
+
         let records = iterator
             .map(|(key, value_bytes)| {
                 match String::from_utf8(value_bytes.into_vec())

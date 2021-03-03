@@ -58,7 +58,6 @@ impl From<String> for DBError {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultSet {
     records: Vec<Record>,
@@ -116,11 +115,19 @@ impl FieldMetadata {
 
 #[cfg(test)]
 mod tests {
-    use super::{DBError, DBResult, RrrDB, schema::{store::SchemaStore, *}};
+    use super::{
+        schema::{store::SchemaStore, *},
+        DBError, DBResult, RrrDB,
+    };
 
     #[test]
     fn run() {
-        assertion_execute_select("SELECT id FROM users", Err(DBError { message: "hoge".to_string() }))
+        assertion_execute_select(
+            "SELECT id FROM users",
+            Err(DBError {
+                message: "hoge".to_string(),
+            }),
+        )
     }
 
     fn assertion_execute_select(sql: &str, expected: DBResult) {

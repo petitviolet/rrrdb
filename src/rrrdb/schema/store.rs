@@ -1,6 +1,10 @@
 use std::error::Error;
 
-use crate::rrrdb::{DBError, schema::*, storage::{Namespace, Storage}};
+use crate::rrrdb::{
+    schema::*,
+    storage::{Namespace, Storage},
+    DBError,
+};
 
 pub(crate) struct SchemaStore<'a> {
     db: &'a mut Storage,
