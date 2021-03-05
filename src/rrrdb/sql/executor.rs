@@ -2,11 +2,10 @@ use std::{ops::Deref, todo};
 
 use storage::Namespace;
 
-use crate::rrrdb::{
-    storage::{self, Storage},
-    DBResult, FieldMetadata, Record, ResultMetadata, ResultSet,
-};
+use crate::rrrdb::{storage::Storage, *};
 
+use super::super::schema::store::SchemaStore;
+use super::super::schema::*;
 use super::planner::*;
 
 pub(crate) struct Executor<'a> {
@@ -86,14 +85,31 @@ impl<'a> Executor<'a> {
             })
             .collect();
         let result_set = ResultSet::new(records, ResultMetadata::new(field_metadatas));
-        Ok(result_set)
+        Ok(OkDBResult::SelectResult(result_set))
     }
 
     fn execute_create_database(&mut self, create_database: CreateDatabasePlan) -> DBResult {
-        todo!()
+        // nothing to do
+        Ok(OkDBResult::ExecutionResult)
     }
 
     fn execute_create_table(&mut self, create_table: CreateTablePlan) -> DBResult {
-        todo!()
+        let database_name = create_table.database_name;
+
+        // create a dedicated column family
+        let cf_name = format!("{}_{}", database_name, create_table.table_name);
+        self.storage.create_column_family(cf_name.as_ref())?;
+
+        // store the schema
+        let columns: Vec<Column> = create_table
+            .column_definitions
+            .into_iter()
+            .map(|column| Column::new(column.name, ColumnType::from(column.column_type)))
+            .collect();
+        let table = Table::new(create_table.table_name.to_string(), columns);
+        let mut store = SchemaStore::new(&mut self.storage);
+        store
+            .create_table(database_name.as_ref(), table)
+            .map(|_| OkDBResult::ExecutionResult)
     }
 }

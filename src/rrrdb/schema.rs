@@ -9,6 +9,12 @@ pub(crate) struct Database {
 }
 
 impl Database {
+    pub fn empty(name: String) -> Self {
+        Self {
+            name,
+            tables: vec![],
+        }
+    }
     pub fn table(&self, table_name: &str) -> Option<Table> {
         (&self.tables).into_iter().find_map(|table| {
             if table.name == table_name {
@@ -27,6 +33,10 @@ pub(crate) struct Table {
 }
 
 impl Table {
+    pub fn new(name: String, columns: Vec<Column>) -> Self {
+        Self { name, columns }
+    }
+
     pub fn column(&self, column_name: &str) -> Option<Column> {
         (&self.columns).into_iter().find_map(|column| {
             if column.name == column_name {
@@ -42,6 +52,12 @@ impl Table {
 pub(crate) struct Column {
     pub name: String,
     pub column_type: ColumnType,
+}
+
+impl Column {
+    pub fn new(name: String, column_type: ColumnType) -> Self {
+        Self { name, column_type }
+    }
 }
 
 macro_rules! define_column_types {
@@ -71,3 +87,15 @@ macro_rules! define_column_types {
 }
 
 define_column_types!(Varchar, Integer);
+
+impl From<String> for ColumnType {
+    fn from(s: String) -> Self {
+        match s.as_ref() {
+            "string" => ColumnType::Varchar,
+            "varchar" => ColumnType::Varchar,
+            "int" => ColumnType::Integer,
+            "integer" => ColumnType::Integer,
+            default => panic!("unexpected type({}) was given", default),
+        }
+    }
+}

@@ -76,8 +76,8 @@ impl CreateTable {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ColumnDefinition {
-    name: String,
-    column_type: String,
+    pub(crate) name: String,
+    pub(crate) column_type: String,
 }
 impl ColumnDefinition {
     pub fn new(name: String, column_type: String) -> Self {
