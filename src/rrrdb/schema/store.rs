@@ -28,4 +28,22 @@ impl<'a> SchemaStore<'a> {
         let key = format!("{}{}", &database.name, Self::SCHEMA_SUFFIX);
         self.db.put_serialized(&Namespace::Metadata, &key, database)
     }
+
+    pub fn create_table(&mut self, database_name: &str, table: Table) -> Result<(), DBError> {
+        let mut schema = self
+            .find_schema(database_name)?
+            .unwrap_or(Database::empty(database_name.to_string()));
+        match schema.table(table.name.as_ref()) {
+            Some(tbl) => Err(DBError::new(format!(
+                "table already exist. table = {:?}",
+                tbl
+            ))),
+            None => {
+                schema.tables.push(table);
+
+                let key = format!("{}{}", schema.name, Self::SCHEMA_SUFFIX);
+                self.db.put_serialized(&Namespace::Metadata, &key, schema)
+            }
+        }
+    }
 }
