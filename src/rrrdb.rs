@@ -32,12 +32,21 @@ impl RrrDB {
     }
 }
 
-pub type DBResult = Result<ResultSet, DBError>;
+pub type DBResult = Result<OkDBResult, DBError>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum OkDBResult {
+    SelectResult(ResultSet),
+    ExecutionResult,
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DBError {
     pub(crate) message: String,
 }
 impl DBError {
+    pub(crate) fn new(message: String) -> Self {
+        Self { message }
+    }
     pub(crate) fn namespace_not_found(namespace: &storage::Namespace) -> Self {
         Self {
             message: format!("ColumnFamily({}) not found", namespace.cf_name()),
