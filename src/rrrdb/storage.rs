@@ -65,19 +65,21 @@ impl Storage {
             .iter()
             .find(|cf| *cf == &Namespace::Metadata.cf_name())
             .is_none();
-        let mut rocksdb = rocksdb::DB::open_cf(&options, path, cfs).unwrap();
+        let rocksdb = rocksdb::DB::open_cf(&options, path, cfs).unwrap();
 
+        let mut instance = Storage { rocksdb };
         if need_to_create_metadata_cf {
-            Self::create_column_family(&mut rocksdb, Namespace::Metadata.cf_name().as_ref())
+            instance
+                .create_column_family(Namespace::Metadata.cf_name().as_ref())
                 .unwrap();
         }
 
-        Storage { rocksdb }
+        instance
     }
 
-    fn create_column_family(rocksdb: &mut rocksdb::DB, cf_name: &str) -> DBResult<()> {
+    pub(crate) fn create_column_family(&mut self, cf_name: &str) -> DBResult<()> {
         let options = rocksdb::Options::default();
-        rocksdb
+        self.rocksdb
             .create_cf(cf_name, &options)
             .map_err(|e| DBError::from(e))
     }
