@@ -112,13 +112,13 @@ impl Storage {
         })
     }
 
-    pub fn get(&mut self, namespace: &Namespace, key: &str) -> DBResult<Option<Vec<u8>>> {
+    pub fn get(&self, namespace: &Namespace, key: &str) -> DBResult<Option<Vec<u8>>> {
         self.get_column_family(namespace)
             .and_then(|cf| self.rocksdb.get_cf(cf, key).map_err(|e| DBError::from(e)))
     }
 
     pub fn get_serialized<T: DeserializeOwned>(
-        &mut self,
+        &self,
         namespace: &Namespace,
         key: &str,
     ) -> Result<Option<T>, DBError> {

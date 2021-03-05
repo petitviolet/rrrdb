@@ -17,7 +17,7 @@ impl<'a> SchemaStore<'a> {
         Self { db }
     }
 
-    pub fn find_schema(&mut self, database_name: &str) -> Result<Option<Database>, DBError> {
+    pub fn find_schema(&self, database_name: &str) -> Result<Option<Database>, DBError> {
         self.db.get_serialized::<Database>(
             &Namespace::database(database_name),
             format!("{}{}", database_name, Self::SCHEMA_SUFFIX).as_ref(),
