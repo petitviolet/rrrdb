@@ -7,7 +7,7 @@ use crate::rrrdb::{
     DBResult, FieldMetadata, Record, ResultMetadata, ResultSet,
 };
 
-use super::planner::{Plan, ProjectionPlan, SelectPlan, SelectTablePlan};
+use super::planner::*;
 
 pub(crate) struct Executor<'a> {
     storage: &'a mut Storage,
@@ -23,6 +23,12 @@ impl<'a> Executor<'a> {
         match &self.plan {
             Plan::SelectPlan(select_plan) => self.execute_select(select_plan.clone()),
             Plan::InsertPlan {} => todo!(""),
+            Plan::CreateDatabasePlan(create_database_plan) => {
+                self.execute_create_database(create_database_plan.clone())
+            }
+            Plan::CreateTablePlan(create_table_plan) => {
+                self.execute_create_table(create_table_plan.clone())
+            }
         }
     }
 
@@ -81,5 +87,13 @@ impl<'a> Executor<'a> {
             .collect();
         let result_set = ResultSet::new(records, ResultMetadata::new(field_metadatas));
         Ok(result_set)
+    }
+
+    fn execute_create_database(&mut self, create_database: CreateDatabasePlan) -> DBResult {
+        todo!()
+    }
+
+    fn execute_create_table(&mut self, create_table: CreateTablePlan) -> DBResult {
+        todo!()
     }
 }

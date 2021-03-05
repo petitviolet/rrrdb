@@ -14,6 +14,8 @@ pub(crate) struct Planner<'a> {
 pub(crate) enum Plan {
     SelectPlan(SelectPlan),
     InsertPlan {},
+    CreateDatabasePlan(CreateDatabasePlan),
+    CreateTablePlan(CreateTablePlan),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -35,6 +37,18 @@ pub(crate) struct SelectTablePlan {
     pub(crate) table: Table,
     pub(crate) select_columns: Vec<Column>,
     pub(crate) filter: Option<Filter>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct CreateDatabasePlan {
+    pub(crate) database_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct CreateTablePlan {
+    pub(crate) database_name: String,
+    pub(crate) table_name: String,
+    pub(crate) column_definitions: Vec<ColumnDefinition>,
 }
 
 impl SelectPlan {
@@ -104,8 +118,12 @@ impl<'a> Planner<'a> {
         match &self.sql {
             Statement::Select(query) => self.build_select_query_plan(query.clone()),
             Statement::Insert(insert) => todo!(),
-            Statement::CreateDatabase(_) => todo!(),
-            Statement::CreateTable(_) => todo!(),
+            Statement::CreateDatabase(create_database) => {
+                self.build_create_database_plan(create_database.clone())
+            }
+            Statement::CreateTable(create_table) => {
+                self.build_create_table_plan(create_table.clone())
+            }
         }
     }
 
@@ -167,5 +185,18 @@ impl<'a> Planner<'a> {
                 }
             });
         Plan::SelectPlan(select_plan)
+    }
+    fn build_create_database_plan(&mut self, create_database: CreateDatabase) -> Plan {
+        Plan::CreateDatabasePlan(CreateDatabasePlan {
+            database_name: create_database.name,
+        })
+    }
+
+    fn build_create_table_plan(&mut self, create_table: CreateTable) -> Plan {
+        Plan::CreateTablePlan(CreateTablePlan {
+            database_name: create_table.database_name,
+            table_name: create_table.table_name,
+            column_definitions: create_table.column_definitions,
+        })
     }
 }

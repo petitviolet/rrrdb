@@ -48,7 +48,7 @@ pub(crate) struct Insert {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct CreateDatabase {
-    name: String,
+    pub(crate) name: String,
 }
 impl CreateDatabase {
     pub fn new(name: String) -> Self {
@@ -57,9 +57,9 @@ impl CreateDatabase {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct CreateTable {
-    database_name: String,
-    table_name: String,
-    column_definitions: Vec<ColumnDefinition>,
+    pub(crate) database_name: String,
+    pub(crate) table_name: String,
+    pub(crate) column_definitions: Vec<ColumnDefinition>,
 }
 impl CreateTable {
     pub fn new(
