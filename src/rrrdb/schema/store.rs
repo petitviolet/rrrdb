@@ -19,7 +19,7 @@ impl<'a> SchemaStore<'a> {
 
     pub fn find_schema(&self, database_name: &str) -> Result<Option<Database>, DBError> {
         self.db.get_serialized::<Database>(
-            &Namespace::database(database_name),
+            &Namespace::Metadata,
             format!("{}{}", database_name, Self::SCHEMA_SUFFIX).as_ref(),
         )
     }
@@ -40,9 +40,7 @@ impl<'a> SchemaStore<'a> {
             ))),
             None => {
                 schema.tables.push(table);
-
-                let key = format!("{}{}", schema.name, Self::SCHEMA_SUFFIX);
-                self.db.put_serialized(&Namespace::Metadata, &key, schema)
+                self.save_schema(schema)
             }
         }
     }
