@@ -124,6 +124,8 @@ impl FieldMetadata {
 
 #[cfg(test)]
 mod tests {
+    use std::{path::Path, thread::{self, sleep}, time};
+
     use super::{
         schema::{store::SchemaStore, *},
         DBError, DBResult, RrrDB,
@@ -140,7 +142,13 @@ mod tests {
     }
 
     fn assertion_execute_select(sql: &str, expected: DBResult) {
-        let mut db = RrrDB::new("./tmp/database");
+        let path = "./test_tmp_database";
+        if Path::new(path).exists() {
+            std::fs::remove_dir_all(path).unwrap();
+            thread::sleep(time::Duration::from_millis(100));
+        }
+        std::fs::create_dir_all(path).unwrap();
+        let mut db = RrrDB::new(path);
         let mut store = SchemaStore::new(&mut db.underlying);
         let database = Database {
             name: String::from("test_db"),
