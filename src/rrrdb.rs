@@ -74,13 +74,6 @@ pub struct ResultSet {
 }
 impl ResultSet {
     pub fn new(records: Vec<Record>, metadata: ResultMetadata) -> Self {
-        assert_eq!(
-            records.len(),
-            metadata.fields.len(),
-            "records and metadata are inconsistent. records = {:?}, metadata = {:?}",
-            records,
-            metadata
-        );
         Self { records, metadata }
     }
 }
