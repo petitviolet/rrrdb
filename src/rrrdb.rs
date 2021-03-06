@@ -125,40 +125,32 @@ mod tests {
 
     use super::{
         schema::{store::SchemaStore, *},
-        DBError, DBResult, RrrDB,
+        *,
     };
 
     #[test]
     fn run() {
-        assertion_execute_select(
-            "SELECT id FROM users",
-            Err(DBError {
-                message: "hoge".to_string(),
-            }),
-        )
+        let mut rrrdb = build_crean_database();
+        rrrdb
+            .execute("test_db", "CREATE TABLE users (id integer)")
+            .unwrap();
+        let result = rrrdb.execute("test_db", "SELECT id FROM users").unwrap();
+        assert_eq!(
+            result,
+            OkDBResult::SelectResult(ResultSet::new(
+                vec![],
+                ResultMetadata::new(vec![FieldMetadata::new("id", "integer")])
+            ))
+        );
     }
 
-    fn assertion_execute_select(sql: &str, expected: DBResult) {
+    fn build_crean_database() -> RrrDB {
         let path = "./test_tmp_database";
         if Path::new(path).exists() {
             std::fs::remove_dir_all(path).unwrap();
             thread::sleep(time::Duration::from_millis(100));
         }
         std::fs::create_dir_all(path).unwrap();
-        let mut db = RrrDB::new(path);
-        let mut store = SchemaStore::new(&mut db.underlying);
-        let database = Database {
-            name: String::from("test_db"),
-            tables: vec![Table {
-                name: String::from("users"),
-                columns: vec![Column {
-                    name: String::from("id"),
-                    column_type: ColumnType::Integer,
-                }],
-            }],
-        };
-        store.save_schema(database).expect("failed to save schema");
-        let result = db.execute("test_db", sql);
-        assert_eq!(result, expected);
+        RrrDB::new(path)
     }
 }
