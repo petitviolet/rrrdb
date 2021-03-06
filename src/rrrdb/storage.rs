@@ -60,7 +60,7 @@ impl Storage {
         options.set_error_if_exists(false);
         options.create_if_missing(true);
         options.create_missing_column_families(true);
-        let cfs = rocksdb::DB::list_cf(&options, path).unwrap();
+        let cfs = rocksdb::DB::list_cf(&options, path).unwrap_or(vec![]);
         let need_to_create_metadata_cf = cfs
             .iter()
             .find(|cf| *cf == &Namespace::Metadata.cf_name())
