@@ -124,7 +124,11 @@ impl FieldMetadata {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::Path, thread::{self, sleep}, time};
+    use std::{
+        path::Path,
+        thread::{self, sleep},
+        time,
+    };
 
     use super::{
         schema::{store::SchemaStore, *},
