@@ -5,7 +5,7 @@ use crate::rrrdb::{schema::*, storage::Storage};
 
 // SQL -> KVS requests
 pub(crate) struct Planner<'a> {
-    database: Database,
+    database: Option<Database>,
     schema_store: SchemaStore<'a>,
     sql: Statement,
 }
@@ -100,10 +100,9 @@ pub(crate) struct Filter {
 
 impl<'a> Planner<'a> {
     pub fn new(database_name: &str, underlying: &'a mut Storage, sql: Statement) -> Self {
-        let mut schema_store = SchemaStore::new(underlying);
+        let schema_store = SchemaStore::new(underlying);
         let database = match schema_store.find_schema(database_name) {
-            Ok(Some(database)) => database,
-            Ok(None) => todo!("database {} doesn't exist", database_name),
+            Ok(database) => database,
             Err(err) => panic!("Unexpected error failed {:?}", err),
         };
 
@@ -128,11 +127,12 @@ impl<'a> Planner<'a> {
     }
 
     fn build_select_query_plan(&mut self, query: Query) -> Plan {
+        let database = self.database.clone().unwrap();
         let mut tables = (&query.froms)
             .into_iter()
-            .flat_map(|table_name| self.database.table(&table_name));
+            .flat_map(|table_name| database.table(&table_name));
         let mut select_plan = SelectPlan {
-            database: self.database.clone(),
+            database: database.clone(),
             plans: vec![],
             projections: vec![],
         };
