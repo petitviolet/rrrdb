@@ -159,3 +159,50 @@ impl Storage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rocksdb::{ColumnFamily, DBIterator};
+    use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+    use super::DBError;
+    use super::Storage;
+    use super::Namespace;
+
+    pub type DBResult<T> = Result<T, DBError>;
+
+    #[test]
+    fn test_storage() {
+        let path = "./tmp/data";
+        let namespace = Namespace::Metadata;
+        let mut instance = Storage::new(path);
+
+        let res1 = instance.get(&namespace, "key-1");
+        println!("res1: {:?}", res1);
+        assert!(res1.unwrap().is_none());
+
+        instance.put(&namespace, "key-1", "value-1".to_string().into_bytes()).unwrap();
+        let res2 = instance.get(&namespace, "key-1");
+        println!("res2: {:?}", res2);
+        assert!(res2.unwrap().unwrap() == "value-1".as_bytes());
+
+        let res3 = instance.get_serialized::<User>(&namespace, "key-2");
+        println!("res3: {:?}", res3);
+        assert!(res3.unwrap().is_none());
+
+        let user = User { name: "Alice".to_string(), age: 20 };
+        let res4 = instance.put_serialized(&namespace,"key-2", &user);
+        println!("res4: {:?}", res4);
+        assert!(res4.is_ok());
+
+        let res5 = instance.get_serialized::<User>(&namespace, "key-2");
+        println!("res5: {:?}", res5);
+        assert!(res5.unwrap().unwrap() == user);
+    }
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+    pub(crate) struct User {
+        pub name: String,
+        pub age: u32,
+    }
+}
