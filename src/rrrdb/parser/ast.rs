@@ -44,8 +44,15 @@ impl Predicate {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Insert {
-    // TODO
+    pub(crate) table_name: String,
+    pub(crate) values: Vec<Value>,
 }
+impl Insert {
+    pub fn new(table_name: String, values: Vec<Value>) -> Self {
+        Self { table_name, values }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct CreateDatabase {
     pub(crate) name: String,
