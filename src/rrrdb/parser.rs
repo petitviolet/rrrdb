@@ -482,6 +482,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn parse_insert_into() {
+        parser_assertion(
+            vec![
+                // INSERT INTO users VALUES (1, 'alice')
+                Token::Keyword(Keyword::Insert),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Into),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Values),
+                Token::Whitespace(Whitespace::Space),
+                Token::LParen,
+                Token::Number("1".to_string()),
+                Token::Comma,
+                Token::Whitespace(Whitespace::Space),
+                Token::SingleQuotedString("alice".to_string()),
+                Token::RParen,
+            ],
+            Statement::Insert(Insert::new(
+                "users".to_string(),
+                vec![
+                    Value::Number("1".to_string()),
+                    Value::QuotedString("alice".to_string()),
+                ],
+            )),
+        );
+    }
+
     fn parser_assertion(tokens: Vec<Token>, expected: Statement) {
         let mut parser = Parser::new(tokens, Some("test_db".to_string()));
         let result = parser.parse();
