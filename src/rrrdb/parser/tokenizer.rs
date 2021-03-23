@@ -83,7 +83,7 @@ impl Tokenizer {
                         }
                     }
                     return_ok(Token::Number(s))
-                },
+                }
                 '\'' => {
                     let mut s = String::new();
                     while let Some(&ch) = peekable.peek() {
@@ -99,7 +99,7 @@ impl Tokenizer {
                         }
                     }
                     return_ok(Token::SingleQuotedString(s))
-                },
+                }
                 _ => {
                     let mut s = String::new();
                     s.push(ch);
@@ -321,6 +321,29 @@ mod tests {
                 Token::Word("name".to_string()),
                 Token::Whitespace(Whitespace::Space),
                 Token::Word("varchar".to_string()),
+                Token::RParen,
+            ],
+        );
+    }
+
+    #[test]
+    fn tokenize_insert_into_simple() {
+        tokenizer_assertion(
+            "INSERT INTO users VALUES (1, 'alice')",
+            vec![
+                Token::Keyword(Keyword::Insert),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Into),
+                Token::Whitespace(Whitespace::Space),
+                Token::Word("users".to_string()),
+                Token::Whitespace(Whitespace::Space),
+                Token::Keyword(Keyword::Values),
+                Token::Whitespace(Whitespace::Space),
+                Token::LParen,
+                Token::Number("1".to_string()),
+                Token::Comma,
+                Token::Whitespace(Whitespace::Space),
+                Token::SingleQuotedString("alice".to_string()),
                 Token::RParen,
             ],
         );
