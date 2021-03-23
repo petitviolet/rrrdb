@@ -83,7 +83,23 @@ impl Tokenizer {
                         }
                     }
                     return_ok(Token::Number(s))
-                }
+                },
+                '\'' => {
+                    let mut s = String::new();
+                    while let Some(&ch) = peekable.peek() {
+                        match ch {
+                            '\'' => {
+                                peekable.next(); // consume '
+                                break;
+                            }
+                            _ => {
+                                peekable.next();
+                                s.push(ch);
+                            }
+                        }
+                    }
+                    return_ok(Token::SingleQuotedString(s))
+                },
                 _ => {
                     let mut s = String::new();
                     s.push(ch);
