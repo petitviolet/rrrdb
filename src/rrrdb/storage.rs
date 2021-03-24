@@ -166,8 +166,8 @@ mod tests {
     use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
     use super::DBError;
-    use super::Storage;
     use super::Namespace;
+    use super::Storage;
 
     pub type DBResult<T> = Result<T, DBError>;
 
@@ -181,7 +181,9 @@ mod tests {
         println!("res1: {:?}", res1);
         assert!(res1.unwrap().is_none());
 
-        instance.put(&namespace, "key-1", "value-1".to_string().into_bytes()).unwrap();
+        instance
+            .put(&namespace, "key-1", "value-1".to_string().into_bytes())
+            .unwrap();
         let res2 = instance.get(&namespace, "key-1");
         println!("res2: {:?}", res2);
         assert!(res2.unwrap().unwrap() == "value-1".as_bytes());
@@ -190,8 +192,11 @@ mod tests {
         println!("res3: {:?}", res3);
         assert!(res3.unwrap().is_none());
 
-        let user = User { name: "Alice".to_string(), age: 20 };
-        let res4 = instance.put_serialized(&namespace,"key-2", &user);
+        let user = User {
+            name: "Alice".to_string(),
+            age: 20,
+        };
+        let res4 = instance.put_serialized(&namespace, "key-2", &user);
         println!("res4: {:?}", res4);
         assert!(res4.is_ok());
 
