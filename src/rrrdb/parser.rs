@@ -121,7 +121,62 @@ impl Parser {
     }
 
     fn parse_insert_statement(&mut self) -> Result<Statement, ParserError> {
-        todo!("parse insert")
+        match self.next_token() {
+            (Token::Keyword(tokenizer::Keyword::Into), _) => {}
+            (unexpected_token, pos) => {
+                return Self::unexpected_token("insert into statement", unexpected_token, pos);
+            }
+        }
+        match self.next_token() {
+            (Token::Word(table_name), _) => {
+                let table_name = table_name.to_owned();
+                match self.next_token() {
+                  (Token::Keyword(Keyword::Values), _) => {
+                    let values = self.parse_insert_values()?;
+                    Ok(Statement::Insert(Insert::new(table_name, values)))
+                  }
+                  (unexpected_token, pos) => {
+                      return Self::unexpected_token("insert into statement", unexpected_token, pos);
+                  }
+                }
+            }
+            (unexpected_token, pos) => {
+                return Self::unexpected_token("insert into statement", unexpected_token, pos);
+            }
+        }
+    }
+    fn parse_insert_values(&mut self) -> Result<Vec<Value>, ParserError> {
+        match self.next_token() {
+            (&Token::LParen, _) => Ok(()),
+            (unexpected_token, pos) => {
+                Self::unexpected_token("insert values", unexpected_token, pos)
+            }
+        }?;
+        let mut results = vec![];
+        let mut is_rparen = false;
+        loop {
+            self.consume_tokens(|token, pos| match token {
+                &Token::RParen => {
+                    is_rparen = true;
+                    Ok(false)
+                }
+                &Token::EOF => Self::unexpected_token("insert values", &Token::EOF, pos),
+                &Token::Comma => Ok(false),
+                Token::Number(num) => {
+                    results.push(Value::Number(num.clone()));
+                    Ok(true)
+                }
+                Token::SingleQuotedString(s) => {
+                    results.push(Value::QuotedString(s.clone()));
+                    Ok(true)
+                }
+                unexpected_token => Self::unexpected_token("insert values", unexpected_token, pos),
+            })?;
+            if is_rparen {
+                break;
+            }
+        }
+        Ok(results)
     }
 
     fn parse_create_statement(&mut self) -> Result<Statement, ParserError> {
