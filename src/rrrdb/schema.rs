@@ -55,6 +55,7 @@ pub(crate) struct Column {
 }
 
 impl Column {
+    pub const ID: &'static str = "id";
     pub fn new(name: String, column_type: ColumnType) -> Self {
         Self { name, column_type }
     }
