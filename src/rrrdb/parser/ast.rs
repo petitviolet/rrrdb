@@ -128,6 +128,19 @@ pub(crate) enum Value {
     Boolean(bool),
     Null,
 }
+impl Value {
+    pub fn to_string_opt(&self) -> Option<String> {
+      match self {
+          Value::Number(n) => { Some(n.to_owned()) }
+          Value::QuotedString(s) => { Some(s.to_owned()) }
+          Value::Boolean(b) => { Some(b.to_string()) }
+          Value::Null => { None }
+      }
+    }
+    pub fn to_string(&self) -> String {
+      self.to_string_opt().unwrap_or(String::from("null"))
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum BinaryOperator {
     Eq,
