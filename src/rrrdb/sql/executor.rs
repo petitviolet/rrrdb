@@ -1,4 +1,4 @@
-use std::{ops::Deref, todo};
+use std::{collections::HashMap, iter::Map, ops::Deref, todo};
 
 use storage::Namespace;
 
@@ -21,7 +21,7 @@ impl<'a> Executor<'a> {
     pub fn execute(&mut self) -> DBResult {
         match &self.plan {
             Plan::SelectPlan(select_plan) => self.execute_select(select_plan.clone()),
-            Plan::InsertPlan {} => todo!(""),
+            Plan::InsertPlan(insert_plan) => self.execute_insert(insert_plan.clone()),
             Plan::CreateDatabasePlan(create_database_plan) => {
                 self.execute_create_database(create_database_plan.clone())
             }
@@ -111,5 +111,39 @@ impl<'a> Executor<'a> {
         store
             .create_table(database_name.as_ref(), table)
             .map(|_| OkDBResult::ExecutionResult)
+    }
+
+    fn execute_insert(&mut self, insert_plan: InsertPlan) -> DBResult {
+        let InsertPlan {
+            database,
+            table,
+            values,
+        } = insert_plan;
+
+        let namespace = &Namespace::table(&database.name, &table.name);
+        let id = values
+            .iter()
+            .find(|value| value.column.name == Column::ID)
+            .expect(&format!(
+                "value for 'id' column is missing. table: {:?}, values: {:?}",
+                table, values
+            ));
+
+        match id.value.to_string_opt() {
+            Some(ref id) => {
+                let mut map = HashMap::with_capacity(values.len());
+                values.into_iter().for_each(|v| {
+                    map.insert(v.column.name, v.value.to_string());
+                });
+                let serialized = serde_json::to_string(&map)
+                    .map_err(|err| DBError::new(format!("failed to serialize. err: {:?}", err)))?;
+                self.storage.put(namespace, id, serialized.into_bytes())?;
+                Ok(OkDBResult::ExecutionResult)
+            }
+            None => Err(DBError::new(format!(
+                "id not found in the given INSERT INTO statement. table: {:?}, values: {:?}",
+                table, values
+            ))),
+        }
     }
 }
