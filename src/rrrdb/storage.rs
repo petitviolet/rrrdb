@@ -174,6 +174,8 @@ mod tests {
     #[test]
     fn test_storage() {
         let path = "./tmp/data";
+        std::fs::remove_dir_all(path).unwrap();
+        std::fs::create_dir(path).unwrap();
         let namespace = Namespace::Metadata;
         let mut instance = Storage::new(path);
 
