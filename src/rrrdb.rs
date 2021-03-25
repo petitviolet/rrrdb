@@ -132,14 +132,17 @@ mod tests {
     fn run() {
         let mut rrrdb = build_crean_database();
         rrrdb
-            .execute("test_db", "CREATE TABLE users (id integer)")
+            .execute("test_db", "CREATE TABLE users (id integer, name varchar)")
             .unwrap();
-        let result = rrrdb.execute("test_db", "SELECT id FROM users").unwrap();
+        rrrdb
+            .execute("test_db", "INSERT INTO users VALUES (1, 'Alice')")
+            .unwrap();
+        let result = rrrdb.execute("test_db", "SELECT * FROM users").unwrap();
         assert_eq!(
             result,
             OkDBResult::SelectResult(ResultSet::new(
                 vec![],
-                ResultMetadata::new(vec![FieldMetadata::new("id", "integer")])
+                ResultMetadata::new(vec![FieldMetadata::new("id", "integer"), FieldMetadata::new("name", "varchar")])
             ))
         );
     }
