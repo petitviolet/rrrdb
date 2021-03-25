@@ -13,7 +13,7 @@ pub(crate) struct Planner<'a> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Plan {
     SelectPlan(SelectPlan),
-    InsertPlan {},
+    InsertPlan(InsertPlan),
     CreateDatabasePlan(CreateDatabasePlan),
     CreateTablePlan(CreateTablePlan),
 }
@@ -49,6 +49,18 @@ pub(crate) struct CreateTablePlan {
     pub(crate) database_name: String,
     pub(crate) table_name: String,
     pub(crate) column_definitions: Vec<ColumnDefinition>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct InsertPlan {
+    pub(crate) database: Database,
+    pub(crate) table: Table,
+    pub(crate) values: Vec<InsertValue>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct InsertValue {
+    pub(crate) column: Column,
+    pub(crate) value: Value,
 }
 
 impl SelectPlan {
@@ -116,7 +128,7 @@ impl<'a> Planner<'a> {
     pub fn plan(&mut self) -> Plan {
         match &self.sql {
             Statement::Select(query) => self.build_select_query_plan(query.clone()),
-            Statement::Insert(insert) => todo!(),
+            Statement::Insert(insert) => self.build_insert_plan(insert.clone()),
             Statement::CreateDatabase(create_database) => {
                 self.build_create_database_plan(create_database.clone())
             }
@@ -197,6 +209,34 @@ impl<'a> Planner<'a> {
             database_name: create_table.database_name,
             table_name: create_table.table_name,
             column_definitions: create_table.column_definitions,
+        })
+    }
+    fn build_insert_plan(&mut self, insert: Insert) -> Plan {
+        let database = self.database.clone().unwrap();
+        let table = database
+            .table(&insert.table_name)
+            .expect(&format!("table {} not found", insert.table_name));
+        let values = table
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, column)| {
+                let column = column.to_owned();
+                let value = insert
+                    .values
+                    .get(i)
+                    .expect(&format!(
+                        "value is missing for column {} in given INSERT INTO statement",
+                        &column.name
+                    ))
+                    .to_owned();
+                InsertValue { column, value }
+            })
+            .collect();
+        Plan::InsertPlan(InsertPlan {
+            database,
+            table,
+            values,
         })
     }
 }
