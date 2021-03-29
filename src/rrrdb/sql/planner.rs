@@ -74,26 +74,24 @@ impl SelectPlan {
                  select_columns,
                  filter,
              }| {
-                let found = select_columns.into_iter().find_map(|column| {
-                    projections.into_iter().enumerate().find_map(|(idx, p)| {
-                        if p.table.name == table.name && p.column.name == column.name {
-                            let metadata =
-                                FieldMetadata::new(&column.name, &column.column_type.to_string());
-                            Some((idx, metadata))
-                        } else {
-                            None
-                        }
+                select_columns
+                    .into_iter()
+                    .filter_map(|column| {
+                        projections.into_iter().enumerate().find_map(|(idx, p)| {
+                            if p.table.name == table.name && p.column.name == column.name {
+                                let metadata = FieldMetadata::new(
+                                    &column.name,
+                                    &column.column_type.to_string(),
+                                );
+                                Some((idx, metadata))
+                            } else {
+                                None
+                            }
+                        })
                     })
-                });
-                match found {
-                    Some(found) => {
+                    .for_each(|found| {
                         metadatas.push(found);
-                    }
-                    None => panic!(
-                        "SelectTablePlans({:?}) don't match ProjectionPlans({:?})",
-                        self.plans, self.projections
-                    ),
-                }
+                    });
                 metadatas
             },
         );
