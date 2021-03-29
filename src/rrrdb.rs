@@ -142,7 +142,10 @@ mod tests {
             result,
             OkDBResult::SelectResult(ResultSet::new(
                 vec![],
-                ResultMetadata::new(vec![FieldMetadata::new("id", "integer"), FieldMetadata::new("name", "varchar")])
+                ResultMetadata::new(vec![
+                    FieldMetadata::new("id", "integer"),
+                    FieldMetadata::new("name", "varchar")
+                ])
             ))
         );
     }

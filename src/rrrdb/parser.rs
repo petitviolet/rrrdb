@@ -131,13 +131,17 @@ impl Parser {
             (Token::Word(table_name), _) => {
                 let table_name = table_name.to_owned();
                 match self.next_token() {
-                  (Token::Keyword(Keyword::Values), _) => {
-                    let values = self.parse_insert_values()?;
-                    Ok(Statement::Insert(Insert::new(table_name, values)))
-                  }
-                  (unexpected_token, pos) => {
-                      return Self::unexpected_token("insert into statement", unexpected_token, pos);
-                  }
+                    (Token::Keyword(Keyword::Values), _) => {
+                        let values = self.parse_insert_values()?;
+                        Ok(Statement::Insert(Insert::new(table_name, values)))
+                    }
+                    (unexpected_token, pos) => {
+                        return Self::unexpected_token(
+                            "insert into statement",
+                            unexpected_token,
+                            pos,
+                        );
+                    }
                 }
             }
             (unexpected_token, pos) => {
