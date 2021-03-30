@@ -152,14 +152,23 @@ mod tests {
         rrrdb
             .execute("test_db", "INSERT INTO users VALUES (1, 'Alice')")
             .unwrap();
+        rrrdb
+            .execute("test_db", "INSERT INTO users VALUES (2, 'Bob')")
+            .unwrap();
         let result = rrrdb.execute("test_db", "SELECT * FROM users").unwrap();
         assert_eq!(
             result,
             OkDBResult::SelectResult(ResultSet::new(
-                vec![Record::new(vec![
+                vec![
+                  Record::new(vec![
                     FieldValue::Int(1),
                     FieldValue::Text("Alice".to_string()),
-                ])],
+                  ]),
+                  Record::new(vec![
+                    FieldValue::Int(2),
+                    FieldValue::Text("Bob".to_string()),
+                  ]),
+                ],
                 ResultMetadata::new(vec![
                     FieldMetadata::new("id", "integer"),
                     FieldMetadata::new("name", "varchar")
