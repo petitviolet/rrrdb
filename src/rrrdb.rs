@@ -156,7 +156,10 @@ mod tests {
         assert_eq!(
             result,
             OkDBResult::SelectResult(ResultSet::new(
-                vec![],
+                vec![Record::new(vec![
+                    FieldValue::Int(1),
+                    FieldValue::Text("Alice".to_string()),
+                ])],
                 ResultMetadata::new(vec![
                     FieldMetadata::new("id", "integer"),
                     FieldMetadata::new("name", "varchar")
