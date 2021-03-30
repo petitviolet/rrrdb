@@ -50,13 +50,23 @@ impl<'a> Executor<'a> {
                     Ok(Ok(json)) => {
                         let row: &serde_json::Map<String, serde_json::Value> =
                             &json.as_object().unwrap().to_owned();
-                        let field_values: Vec<Vec<u8>> = (&field_metadatas)
+                        let field_values: Vec<FieldValue> = (&field_metadatas)
                             .into_iter()
                             .map(|meta| {
                                 let found =
                                     row.into_iter().find_map(|(column_name, column_value)| {
                                         if column_name.deref() == meta.field_name {
-                                            Some(column_value.as_str().unwrap().as_bytes().to_vec())
+                                            let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
+                                            match meta.field_type() {
+                                              ColumnType::Integer => {
+                                                let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
+                                                Some(FieldValue::Int(int))
+                                              }
+                                              ColumnType::Varchar => {
+                                                let s = String::from_utf8(bytes).unwrap();
+                                                Some(FieldValue::Text(s))
+                                              }
+                                            }
                                         } else {
                                             None
                                         }
