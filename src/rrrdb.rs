@@ -1,5 +1,6 @@
 use parser::Parser;
 
+use crate::rrrdb::schema::ColumnType;
 use crate::rrrdb::storage::Storage;
 
 use self::{parser::ParserError, sql::executor::Executor, sql::planner::Planner};
@@ -76,6 +77,9 @@ impl ResultSet {
     pub fn new(records: Vec<Record>, metadata: ResultMetadata) -> Self {
         Self { records, metadata }
     }
+    pub fn get(&self, index: usize) -> Option<&Record> {
+        self.records.get(index)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -86,8 +90,16 @@ impl Record {
     pub fn new(values: Vec<FieldValue>) -> Self {
         Self { values }
     }
+    pub fn get(&self, index: usize) -> Option<&FieldValue> {
+        self.values.get(index)
+    }
 }
-pub type FieldValue = Vec<u8>;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FieldValue {
+    Bytes(Vec<u8>),
+    Int(i64),
+    Text(String),
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResultMetadata {
@@ -103,7 +115,7 @@ impl ResultMetadata {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldMetadata {
     pub(crate) field_name: String,
-    pub(crate) field_type: String,
+    field_type: String,
 }
 
 impl FieldMetadata {
@@ -112,6 +124,9 @@ impl FieldMetadata {
             field_name: name.to_string(),
             field_type: _type.to_string(),
         }
+    }
+    pub(crate) fn field_type(&self) -> ColumnType {
+        ColumnType::from(self.field_type.to_owned())
     }
 }
 
