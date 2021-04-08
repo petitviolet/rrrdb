@@ -1,4 +1,4 @@
-use std::todo;
+use std::{todo};
 
 use crate::rrrdb::{parser::*, schema::store::SchemaStore, FieldMetadata};
 use crate::rrrdb::{schema::*, storage::Storage};
@@ -23,6 +23,7 @@ pub(crate) struct SelectPlan {
     pub(crate) database: Database,
     pub(crate) plans: Vec<SelectTablePlan>,
     pub(crate) projections: Vec<ProjectionPlan>,
+    pub(crate) filters: Vec<Filter>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,10 +56,10 @@ pub(crate) struct CreateTablePlan {
 pub(crate) struct InsertPlan {
     pub(crate) database: Database,
     pub(crate) table: Table,
-    pub(crate) values: Vec<InsertValue>,
+    pub(crate) values: Vec<RecordValue>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct InsertValue {
+pub(crate) struct RecordValue {
     pub(crate) column: Column,
     pub(crate) value: Value,
 }
@@ -105,7 +106,14 @@ impl SelectPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Filter {
-    f: fn(Table) -> bool,
+    pub table_name: String,
+    pub column_name: String,
+    pub expected_value: Value,
+}
+impl Filter {
+    pub fn new(table_name: String, column_name: String, expected_value: Value) -> Self {
+        Self { table_name, column_name, expected_value }
+    }
 }
 
 impl<'a> Planner<'a> {
@@ -138,20 +146,22 @@ impl<'a> Planner<'a> {
 
     fn build_select_query_plan(&mut self, query: Query) -> Plan {
         let database = self.database.clone().unwrap();
-        let mut tables = (&query.froms)
+        let mut tables: Vec<Table> = (&query.froms)
             .into_iter()
-            .flat_map(|table_name| database.table(&table_name));
+            .flat_map(|table_name| database.table(&table_name)).collect();
         let mut select_plan = SelectPlan {
             database: database.clone(),
             plans: vec![],
             projections: vec![],
+            filters: vec![],
         };
         (&query.projections)
             .into_iter()
             .for_each(|projection| match projection {
                 Projection::Expression(expr) => match expr {
                     Expression::Ident(ident) => {
-                        let (table, column) = tables
+                        let (table, column) = (&tables)
+                            .into_iter()
                             .find_map(|t| t.column(ident).map(|c| (t, c)))
                             .expect(&format!("Unknown identifier: {}", ident));
                         let projection_plan = ProjectionPlan {
@@ -159,7 +169,7 @@ impl<'a> Planner<'a> {
                             column: column.clone(),
                         };
                         let select_table_plan = SelectTablePlan {
-                            table,
+                            table: table.clone(),
                             select_columns: vec![column],
                             filter: None,
                         };
@@ -177,7 +187,8 @@ impl<'a> Planner<'a> {
                 },
                 Projection::Wildcard => {
                     assert!(query.froms.len() == 1);
-                    let table = tables
+                    let table = (&tables)
+                        .into_iter()
                         .next()
                         .expect(&format!("table not found for {}", query.froms[0]));
                     let projection_plans = (&table.columns).into_iter().map(|c| ProjectionPlan {
@@ -194,8 +205,38 @@ impl<'a> Planner<'a> {
                     select_plan.plans.push(select_table_plan);
                 }
             });
+        if let Some(expr) = &query.predicate.expression {
+            match expr { 
+                Expression::BinOperator { lhs, rhs, op } => {
+                    match (lhs.as_ref(), rhs.as_ref()) {
+                        (Expression::Ident(ident), Expression::Value(value)) => {
+                            select_plan.filters.push(self.build_filter(&tables, ident.to_owned(), value.to_owned()));
+                        }
+                        (Expression::Value(value), Expression::Ident(ident)) => {
+                            select_plan.filters.push(self.build_filter(&tables, ident.to_owned(), value.to_owned()));
+                        }
+                        _ => todo!("not supported yet expression: {:?}", expr),
+                    };
+                }
+                _ => {
+                    // meaningless
+                }
+            }
+        };
         Plan::SelectPlan(select_plan)
     }
+
+    fn build_filter(&self, tables: &Vec<Table>, ident: String, value: Value) -> Filter {
+        let x = tables
+        .into_iter()
+            .find_map(|t| 
+              t.column(&ident).map(|c| (t, c))
+            );
+            let (table, left_column) = x.expect(&format!("Unknown identifier: {}, value: {:?}", ident, value));
+        
+        Filter::new(table.name.to_owned(), ident, value)
+    }
+
     fn build_create_database_plan(&mut self, create_database: CreateDatabase) -> Plan {
         Plan::CreateDatabasePlan(CreateDatabasePlan {
             database_name: create_database.name,
@@ -228,7 +269,7 @@ impl<'a> Planner<'a> {
                         &column.name
                     ))
                     .to_owned();
-                InsertValue { column, value }
+                RecordValue { column, value }
             })
             .collect();
         Plan::InsertPlan(InsertPlan {
