@@ -33,6 +33,7 @@ impl<'a> Executor<'a> {
 
     fn execute_select(&mut self, select_plan: SelectPlan) -> DBResult {
         let field_metadatas: Vec<FieldMetadata> = select_plan.result_metadata();
+        println!("[execute_select] field_metadatas: {:?}", field_metadatas);
         let namespaces: Vec<Namespace> = (&select_plan.plans)
             .clone()
             .into_iter()
@@ -40,6 +41,17 @@ impl<'a> Executor<'a> {
             .collect();
 
         // TODO: concurrent
+        let table_name = match &namespaces[0] {
+            Namespace::Table {
+                database_name,
+                name: table_name,
+            } => table_name,
+            _ => panic!("namespace must be Table"),
+        };
+        let mut filters: Vec<Filter> = select_plan
+            .filters
+            .into_iter()
+            .filter(|f| &f.table_name == table_name).collect();
         let iterator = self.storage.iterator(&namespaces[0])?; // iterate over given namespace(table)
 
         let records = iterator
@@ -50,31 +62,60 @@ impl<'a> Executor<'a> {
                     Ok(Ok(json)) => {
                         let row: &serde_json::Map<String, serde_json::Value> =
                             &json.as_object().unwrap().to_owned();
+                        println!("field_metadatas: {:?}, row: {:?}", field_metadatas, row);
                         let field_values: Vec<FieldValue> = (&field_metadatas)
                             .into_iter()
-                            .map(|meta| {
+                            .filter_map(|meta| {
                                 let found =
                                     row.into_iter().find_map(|(column_name, column_value)| {
+                                        println!("meta.field_name: {}, column_name: {}, column_value: {}", meta.field_name, column_name, column_value);
                                         if column_name.deref() == meta.field_name {
                                             let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
                                             match meta.field_type() {
                                               ColumnType::Integer => {
                                                 let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
-                                                Some(FieldValue::Int(int))
+                                                Some((column_name, FieldValue::Int(int)))
                                               }
                                               ColumnType::Varchar => {
                                                 let s = String::from_utf8(bytes).unwrap();
-                                                Some(FieldValue::Text(s))
+                                                Some((column_name, FieldValue::Text(s)))
                                               }
                                             }
                                         } else {
                                             None
                                         }
                                     });
-                                found.expect(&format!(
+                                let (column_name, field_value) = found.expect(&format!(
                                     "field({:?}) not found in a row({:?})",
                                     meta, row
-                                ))
+                                ));
+                                if let Some(filter) = (&filters).into_iter().find(|f| &f.column_name == column_name) {
+                                  println!("filter: {:?}, field_value: {:?}", filter, field_value);
+                                  match (filter.expected_value.clone(), field_value) {
+                                      (parser::Value::Number(n), FieldValue::Int(i)) => {
+                                        if n.parse::<i64>().unwrap() == i {
+                                          Some(FieldValue::Int(i))
+                                        } else { None }
+                                      }
+                                      (parser::Value::QuotedString(qs), FieldValue::Text(t)) => {
+                                        if qs == t {
+                                          Some(FieldValue::Text(t))
+                                        } else { None }
+                                      }
+                                      (parser::Value::Boolean(b), FieldValue::Text(t)) => {
+                                        if t == b.to_string() {
+                                          Some(FieldValue::Text(t))
+                                        } else { None }
+                                      }
+                                      (a, b) => { 
+                                        println!("filter a: {:?}, b: {:?}", a, b);
+                                        None
+                                       }
+                                  }
+                                } else { 
+                                  println!("no filter found for {}. filters = {:?}", column_name, filters);
+                                  Some(field_value) 
+                                }
                             })
                             .collect();
                         Record::new(field_values)
