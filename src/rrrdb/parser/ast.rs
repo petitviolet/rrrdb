@@ -30,7 +30,7 @@ pub(crate) enum Projection {
 type Table = String;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Predicate {
-    expression: Option<Expression>,
+    pub expression: Option<Expression>,
 }
 impl Predicate {
     pub fn empty() -> Self {
