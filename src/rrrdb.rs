@@ -175,6 +175,24 @@ mod tests {
                 ])
             ))
         );
+        println!("OK - SELECT * FROM users");
+
+        let result = rrrdb.execute("test_db", "SELECT name FROM users WHERE id = 2").unwrap();
+        assert_eq!(
+            result,
+            OkDBResult::SelectResult(ResultSet::new(
+                vec![
+                  Record::new(vec![
+                    FieldValue::Text("Bob".to_string()),
+                  ]),
+                ],
+                ResultMetadata::new(vec![
+                    FieldMetadata::new("name", "varchar")
+                ])
+            ))
+        );
+
+        println!("OK - SELECT name FROM users WHERE id = 2");
     }
 
     fn build_crean_database() -> RrrDB {
