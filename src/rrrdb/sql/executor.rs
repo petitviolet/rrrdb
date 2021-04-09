@@ -34,35 +34,66 @@ impl<'a> Executor<'a> {
     fn execute_select(&mut self, select_plan: SelectPlan) -> DBResult {
         let field_metadatas: Vec<FieldMetadata> = select_plan.result_metadata();
         println!("[execute_select] field_metadatas: {:?}", field_metadatas);
-        let namespaces: Vec<Namespace> = (&select_plan.plans)
-            .clone()
-            .into_iter()
-            .map(|p| Namespace::table(&select_plan.database.name, &p.table.name))
-            .collect();
+        let table = &select_plan.plans.get(0).unwrap().table;
+        let namespace = Namespace::table(&select_plan.database.name, &table.name);
+        // support only one table
+        // let namespaces: Vec<Namespace> = (&select_plan.plans)
+        //     .clone()
+        //     .into_iter()
+        //     .map(|p| Namespace::table(&select_plan.database.name, &p.table.name))
+        //     .collect();
 
         // TODO: concurrent
-        let table_name = match &namespaces[0] {
-            Namespace::Table {
-                database_name,
-                name: table_name,
-            } => table_name,
-            _ => panic!("namespace must be Table"),
-        };
         let mut filters: Vec<Filter> = select_plan
             .filters
             .into_iter()
-            .filter(|f| &f.table_name == table_name).collect();
-        let iterator = self.storage.iterator(&namespaces[0])?; // iterate over given namespace(table)
+            .filter(|f| f.table_name == table.name)
+            .collect();
+        let iterator = self.storage.iterator(&namespace)?; // iterate over given namespace(table)
 
         let records = iterator
-            .map(|(key, value_bytes)| {
+            .filter_map(|(key, value_bytes)| {
                 match String::from_utf8(value_bytes.into_vec())
                     .map(|j| serde_json::from_str::<serde_json::Value>(&j))
                 {
                     Ok(Ok(json)) => {
-                        let row: &serde_json::Map<String, serde_json::Value> =
-                            &json.as_object().unwrap().to_owned();
-                        println!("field_metadatas: {:?}, row: {:?}", field_metadatas, row);
+                        let row: &serde_json::Map<String, serde_json::Value> = &json.as_object().unwrap().to_owned();
+                        let record = row.into_iter().fold(
+                          HashMap::new(),
+                        |mut map, (column_name, column_value)| {
+                          let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
+                          match table.column(column_name).unwrap().column_type {
+                            ColumnType::Integer => {
+                              let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
+                              map.insert(column_name, FieldValue::Int(int));
+                            }
+                            ColumnType::Varchar => {
+                              let s = String::from_utf8(bytes).unwrap();
+                              map.insert(column_name, FieldValue::Text(s));
+                            }
+                          }
+                          map
+                        });
+                        println!("field_metadatas: {:?}, record: {:?}", field_metadatas, record);
+                        if let Some(filter) = (&filters).into_iter().find(|filter| {
+                          let value: &FieldValue = record.get(&filter.column_name).expect(&format!("column was not found in record {:?}", record)); 
+                          match (value, &filter.expected_value) {
+                              (FieldValue::Int(i), parser::Value::Number(n)) => {
+                                &n.parse::<i64>().unwrap() != i
+                              }
+                              (FieldValue::Text(t), parser::Value::QuotedString(s)) => {
+                                t != s
+                              }
+                              _ => {
+                                println!("unexpected combination. value: {:?}, expected: {:?}", value, filter.expected_value);
+                                true
+                              }
+                          }
+                        }) {
+                          println!("skipped by filter {:?}. record = {:?}", filter, record);
+                          return None
+                        };
+
                         let field_values: Vec<FieldValue> = (&field_metadatas)
                             .into_iter()
                             .filter_map(|meta| {
@@ -89,36 +120,10 @@ impl<'a> Executor<'a> {
                                     "field({:?}) not found in a row({:?})",
                                     meta, row
                                 ));
-                                if let Some(filter) = (&filters).into_iter().find(|f| &f.column_name == column_name) {
-                                  println!("filter: {:?}, field_value: {:?}", filter, field_value);
-                                  match (filter.expected_value.clone(), field_value) {
-                                      (parser::Value::Number(n), FieldValue::Int(i)) => {
-                                        if n.parse::<i64>().unwrap() == i {
-                                          Some(FieldValue::Int(i))
-                                        } else { None }
-                                      }
-                                      (parser::Value::QuotedString(qs), FieldValue::Text(t)) => {
-                                        if qs == t {
-                                          Some(FieldValue::Text(t))
-                                        } else { None }
-                                      }
-                                      (parser::Value::Boolean(b), FieldValue::Text(t)) => {
-                                        if t == b.to_string() {
-                                          Some(FieldValue::Text(t))
-                                        } else { None }
-                                      }
-                                      (a, b) => { 
-                                        println!("filter a: {:?}, b: {:?}", a, b);
-                                        None
-                                       }
-                                  }
-                                } else { 
-                                  println!("no filter found for {}. filters = {:?}", column_name, filters);
-                                  Some(field_value) 
-                                }
+                                Some(field_value)
                             })
                             .collect();
-                        Record::new(field_values)
+                        Some(Record::new(field_values))
                     }
                     Ok(Err(err)) => {
                         panic!(
