@@ -160,14 +160,14 @@ mod tests {
             result,
             OkDBResult::SelectResult(ResultSet::new(
                 vec![
-                  Record::new(vec![
-                    FieldValue::Int(1),
-                    FieldValue::Text("Alice".to_string()),
-                  ]),
-                  Record::new(vec![
-                    FieldValue::Int(2),
-                    FieldValue::Text("Bob".to_string()),
-                  ]),
+                    Record::new(vec![
+                        FieldValue::Int(1),
+                        FieldValue::Text("Alice".to_string()),
+                    ]),
+                    Record::new(vec![
+                        FieldValue::Int(2),
+                        FieldValue::Text("Bob".to_string()),
+                    ]),
                 ],
                 ResultMetadata::new(vec![
                     FieldMetadata::new("id", "integer"),
@@ -177,18 +177,14 @@ mod tests {
         );
         println!("OK - SELECT * FROM users");
 
-        let result = rrrdb.execute("test_db", "SELECT name FROM users WHERE id = 2").unwrap();
+        let result = rrrdb
+            .execute("test_db", "SELECT name FROM users WHERE id = 2")
+            .unwrap();
         assert_eq!(
             result,
             OkDBResult::SelectResult(ResultSet::new(
-                vec![
-                  Record::new(vec![
-                    FieldValue::Text("Bob".to_string()),
-                  ]),
-                ],
-                ResultMetadata::new(vec![
-                    FieldMetadata::new("name", "varchar")
-                ])
+                vec![Record::new(vec![FieldValue::Text("Bob".to_string()),]),],
+                ResultMetadata::new(vec![FieldMetadata::new("name", "varchar")])
             ))
         );
 
