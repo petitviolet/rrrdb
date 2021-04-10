@@ -44,7 +44,7 @@ impl<'a> Executor<'a> {
         //     .collect();
 
         // TODO: concurrent
-        let mut filters: Vec<Filter> = select_plan
+        let filters: Vec<Filter> = select_plan
             .filters
             .into_iter()
             .filter(|f| f.table_name == table.name)
@@ -57,73 +57,17 @@ impl<'a> Executor<'a> {
                     .map(|j| serde_json::from_str::<serde_json::Value>(&j))
                 {
                     Ok(Ok(json)) => {
-                        let row: &serde_json::Map<String, serde_json::Value> = &json.as_object().unwrap().to_owned();
-                        let record = row.into_iter().fold(
-                          HashMap::new(),
-                        |mut map, (column_name, column_value)| {
-                          let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
-                          match table.column(column_name).unwrap().column_type {
-                            ColumnType::Integer => {
-                              let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
-                              map.insert(column_name, FieldValue::Int(int));
-                            }
-                            ColumnType::Varchar => {
-                              let s = String::from_utf8(bytes).unwrap();
-                              map.insert(column_name, FieldValue::Text(s));
-                            }
-                          }
-                          map
-                        });
-                        println!("field_metadatas: {:?}, record: {:?}", field_metadatas, record);
-                        if let Some(filter) = (&filters).into_iter().find(|filter| {
-                          let value: &FieldValue = record.get(&filter.column_name).expect(&format!("column was not found in record {:?}", record)); 
-                          match (value, &filter.expected_value) {
-                              (FieldValue::Int(i), parser::Value::Number(n)) => {
-                                &n.parse::<i64>().unwrap() != i
-                              }
-                              (FieldValue::Text(t), parser::Value::QuotedString(s)) => {
-                                t != s
-                              }
-                              _ => {
-                                println!("unexpected combination. value: {:?}, expected: {:?}", value, filter.expected_value);
-                                true
-                              }
-                          }
-                        }) {
-                          println!("skipped by filter {:?}. record = {:?}", filter, record);
-                          return None
+                        let record = Self::parse_single_row(&table, json);
+                        println!(
+                            "field_metadatas: {:?}, record: {:?}",
+                            field_metadatas, record
+                        );
+                        if let Some(filter) = Self::apply_filter(&filters, &record) {
+                            println!("skipped by filter {:?}. record = {:?}", filter, record);
+                            return None;
                         };
 
-                        let field_values: Vec<FieldValue> = (&field_metadatas)
-                            .into_iter()
-                            .filter_map(|meta| {
-                                let found =
-                                    row.into_iter().find_map(|(column_name, column_value)| {
-                                        println!("meta.field_name: {}, column_name: {}, column_value: {}", meta.field_name, column_name, column_value);
-                                        if column_name.deref() == meta.field_name {
-                                            let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
-                                            match meta.field_type() {
-                                              ColumnType::Integer => {
-                                                let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
-                                                Some((column_name, FieldValue::Int(int)))
-                                              }
-                                              ColumnType::Varchar => {
-                                                let s = String::from_utf8(bytes).unwrap();
-                                                Some((column_name, FieldValue::Text(s)))
-                                              }
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    });
-                                let (column_name, field_value) = found.expect(&format!(
-                                    "field({:?}) not found in a row({:?})",
-                                    meta, row
-                                ));
-                                Some(field_value)
-                            })
-                            .collect();
-                        Some(Record::new(field_values))
+                        Some(Self::build_record(&field_metadatas, &record))
                     }
                     Ok(Err(err)) => {
                         panic!(
@@ -142,6 +86,69 @@ impl<'a> Executor<'a> {
             .collect();
         let result_set = ResultSet::new(records, ResultMetadata::new(field_metadatas));
         Ok(OkDBResult::SelectResult(result_set))
+    }
+
+    fn parse_single_row(table: &Table, json: serde_json::Value) -> HashMap<String, FieldValue> {
+        let row: &serde_json::Map<String, serde_json::Value> =
+            &json.as_object().unwrap().to_owned();
+        row.into_iter()
+            .fold(HashMap::new(), |mut map, (column_name, column_value)| {
+                let bytes = column_value.as_str().unwrap().as_bytes().to_vec();
+                match table.column(column_name).unwrap().column_type {
+                    ColumnType::Integer => {
+                        let int = String::from_utf8(bytes).unwrap().parse::<i64>().unwrap();
+                        map.insert(column_name.to_owned(), FieldValue::Int(int));
+                    }
+                    ColumnType::Varchar => {
+                        let s = String::from_utf8(bytes).unwrap();
+                        map.insert(column_name.to_owned(), FieldValue::Text(s));
+                    }
+                }
+                map
+            })
+    }
+
+    fn apply_filter(filters: &Vec<Filter>, record: &HashMap<String, FieldValue>) -> Option<Filter> {
+        filters
+            .into_iter()
+            .find(|filter| {
+                let value: &FieldValue = record
+                    .get(&filter.column_name)
+                    .expect(&format!("column was not found in record {:?}", record));
+                match (value, &filter.expected_value) {
+                    (FieldValue::Int(i), parser::Value::Number(n)) => {
+                        &n.parse::<i64>().unwrap() != i
+                    }
+                    (FieldValue::Text(t), parser::Value::QuotedString(s)) => t != s,
+                    _ => {
+                        println!(
+                            "unexpected combination. value: {:?}, expected: {:?}",
+                            value, filter.expected_value
+                        );
+                        true
+                    }
+                }
+            })
+            .map(|f| f.to_owned())
+    }
+
+    fn build_record(
+        field_metadatas: &Vec<FieldMetadata>,
+        record: &HashMap<String, FieldValue>,
+    ) -> Record {
+        let field_values: Vec<FieldValue> = field_metadatas
+            .into_iter()
+            .filter_map(|meta| {
+                record.into_iter().find_map(|(column_name, field_value)| {
+                    if column_name.deref() == meta.field_name {
+                        Some(field_value.to_owned())
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
+        Record::new(field_values)
     }
 
     fn execute_create_database(&mut self, create_database: CreateDatabasePlan) -> DBResult {
