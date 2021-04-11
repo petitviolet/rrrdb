@@ -4,19 +4,55 @@ Under construction
 
 See [rust-rocksdb](https://crates.io/crates/rocksdb)
 
+## Feature
+
+### SQL
+
+Suported SQLs are like:
+
+- `CREATE TABLE users (id integer, name varchar)`
+- `INSERT INTO users VALUES (1, 'Alice')`
+- `SELECT * FROM users`
+- `SELECT name FROM users WHERE id = 2`
+
+So, I'd say it's a tiny subset of SQL supported.
+
+### Supported Type
+
+Basically, Int and String are supported.
+Boolean will be there soon, hopefully.
+
 ## Design
+
+### Layered
+
+- SQL layer
+    - tokenize and parse given SQLs
+- Planner
+    - compile a given SQL into a Plan that represents how to fetch data from storage layer, which is RocksDB
+- Executor
+    - fetch data based on a given Plan
+- Storage
+    - can be considered RocksDB wrapper
+    - get a record by a key
+    - get a iterator on a ColumnFamily
+    - put a record with a key
 
 ### Storage Layer
 
-Built on top of RocksDB.
-Row-oriented database.
+Use RocksDB as a backend storage layer to persist actual data.
+RocksDB is a Key-Value store, and RrrDB is row-oriented database on top of RocksDB.
+
 Using ColumnFamily of RocksDB to store:
 
 - Metadata
-    - ColumnFamily name: _rrrrdb_metadata
+    - ColumnFamily name: "metadata"
     - key: database name, value: database schema(JSON)
-- Records of a table
-    - ColumnFamily name: `<database_name>_<table_name>_records`
+- Database
+    - not in used
+- Table
+    - Stores records in a particular table
+    - ColumnFamily name: `<database_name>_<table_name>`
     - key: primary key, value: record(JSON)
 
 These are obviously too naive, but works.
