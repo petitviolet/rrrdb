@@ -4,6 +4,27 @@ Under construction
 
 See [rust-rocksdb](https://crates.io/crates/rocksdb)
 
+## How to Use
+
+```rust
+let rrrdb = RrrDB::new(path)
+rrrdb.execute("test_db", "CREATE TABLE users (id integer, name varchar)").unwrap(); // should handle properly
+rrrdb.execute("test_db", "INSERT INTO users VALUES (1, 'Alice')").unwrap();
+rrrdb.execute("test_db", "INSERT INTO users VALUES (2, 'Bob')").unwrap();
+let result = rrrdb.execute("test_db", "SELECT name FROM users WHERE id = 2").unwrap();
+result == 
+    OkDBResult::SelectResult(ResultSet::new(
+        vec![
+            Record::new(vec![
+                FieldValue::Text("Bob".to_string()),
+            ]),
+        ],
+        ResultMetadata::new(vec![
+            FieldMetadata::new("name", "varchar")
+        ])
+    ))
+```
+
 ## Feature
 
 ### SQL
