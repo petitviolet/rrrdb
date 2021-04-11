@@ -189,6 +189,19 @@ mod tests {
         );
 
         println!("OK - SELECT name FROM users WHERE id = 2");
+
+        let result = rrrdb
+            .execute("test_db", "SELECT id FROM users WHERE name = 'Alice'")
+            .unwrap();
+        assert_eq!(
+            result,
+            OkDBResult::SelectResult(ResultSet::new(
+                vec![Record::new(vec![FieldValue::Int(1),]),],
+                ResultMetadata::new(vec![FieldMetadata::new("id", "integer")])
+            ))
+        );
+
+        println!("OK - SELECT id FROM users WHERE name = 'Alice'");
     }
 
     fn build_crean_database() -> RrrDB {
