@@ -77,3 +77,7 @@ Using ColumnFamily of RocksDB to store:
     - key: primary key, value: record(JSON)
 
 These are obviously too naive, but works.
+
+## License
+
+Apache License 2.0
